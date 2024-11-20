@@ -1,0 +1,5 @@
+# Use this yaml file to control what features are available in the GUI.
+# For EXE releases we can block certain features e.g. to customers
+
+modules: 
+    huggingface: false

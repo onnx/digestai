@@ -1,0 +1,52 @@
+Report created on June 02, 2024
+ONNX file: resnet18.onnx
+Name of the model: resnet18
+Model version: 0
+Name of the graph: main_graph
+Producer: pytorch 2.1.0
+Ir version: 8
+Opset: 17
+
+Import list
+	: 17
+
+Total graph nodes: 49
+Number of parameters: 11684712
+Number of FLOPs: 3632136680
+
+Op intensity:
++-----------+------------+---------------------+
+| Operation |   FLOPs    |    Intensity (%)    |
++-----------+------------+---------------------+
+|    Conv   | 3629606400 |   99.9303363220351  |
+|    Add    |  1505280   | 0.04144337431707003 |
+|    Gemm   |  1025000   | 0.02822030364782418 |
++-----------+------------+---------------------+
+
+Nodes and their occurrences:
++-------------------+-------------+
+|        Node       | Occurrences |
++-------------------+-------------+
+|        Conv       |      20     |
+|        Relu       |      17     |
+|        Add        |      8      |
+|      MaxPool      |      1      |
+| GlobalAveragePool |      1      |
+|      Flatten      |      1      |
+|        Gemm       |      1      |
++-------------------+-------------+
+
+Input Tensor(s) Information:
++------------+------------------+---------+------------------+
+| Input Name |      Shape       |   Type  | Tensor Size (KB) |
++------------+------------------+---------+------------------+
+|  input.1   | [1, 3, 224, 224] | float32 |      588.00      |
++------------+------------------+---------+------------------+
+
+Output Tensor(s) Information:
++-------------+-----------+---------+------------------+
+| Output Name |   Shape   |   Type  | Tensor Size (KB) |
++-------------+-----------+---------+------------------+
+|     191     | [1, 1000] | float32 |       3.91       |
++-------------+-----------+---------+------------------+
+
