@@ -14,14 +14,14 @@ from digest.ui.modelsummary_ui import Ui_modelSummary
 from digest.freeze_inputs import FreezeInputs
 from digest.popup_window import PopupWindow
 from digest.qt_utils import apply_dark_style_sheet
-from utils import onnx_utils
+from digest.model_class.digest_onnx_model import DigestOnnxModel
 
 ROOT_FOLDER = os.path.dirname(os.path.abspath(__file__))
 
 
 class modelSummary(QWidget):
 
-    def __init__(self, digest_model: onnx_utils.DigestOnnxModel, parent=None):
+    def __init__(self, digest_model: DigestOnnxModel, parent=None):
         super().__init__(parent)
         self.ui = Ui_modelSummary()
         self.ui.setupUi(self)

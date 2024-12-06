@@ -23,6 +23,7 @@ from digest.ui.multimodelselection_page_ui import Ui_MultiModelSelection
 from digest.multi_model_analysis import MultiModelAnalysis
 from digest.qt_utils import apply_dark_style_sheet, prompt_user_ram_limit
 from utils import onnx_utils
+from digest.model_class.digest_onnx_model import DigestOnnxModel
 
 
 class AnalysisThread(QThread):
@@ -33,7 +34,7 @@ class AnalysisThread(QThread):
 
     def __init__(self):
         super().__init__()
-        self.model_dict: Dict[str, Optional[onnx_utils.DigestOnnxModel]] = {}
+        self.model_dict: Dict[str, Optional[DigestOnnxModel]] = {}
         self.user_canceled = False
 
     def run(self):
@@ -49,7 +50,7 @@ class AnalysisThread(QThread):
                 continue
             model_name = os.path.splitext(os.path.basename(file))[0]
             model_proto = onnx_utils.load_onnx(file, False)
-            self.model_dict[file] = onnx_utils.DigestOnnxModel(
+            self.model_dict[file] = DigestOnnxModel(
                 model_proto, onnx_filepath=file, model_name=model_name, save_proto=False
             )
 
@@ -58,7 +59,7 @@ class AnalysisThread(QThread):
         model_list = [
             model
             for model in self.model_dict.values()
-            if isinstance(model, onnx_utils.DigestOnnxModel)
+            if isinstance(model, DigestOnnxModel)
         ]
 
         self.completed.emit(model_list)
@@ -94,7 +95,7 @@ class MultiModelSelectionPage(QWidget):
 
         self.ui.openAnalysisBtn.clicked.connect(self.start_analysis)
 
-        self.model_dict: Dict[str, Optional[onnx_utils.DigestOnnxModel]] = {}
+        self.model_dict: Dict[str, Optional[DigestOnnxModel]] = {}
 
         self.analysis_thread: Optional[AnalysisThread] = None
         self.progress: Optional[ProgressDialog] = None
@@ -289,7 +290,7 @@ class MultiModelSelectionPage(QWidget):
         self.analysis_thread.model_dict = self.model_dict
         self.analysis_thread.start()
 
-    def open_analysis(self, model_list: List[onnx_utils.DigestOnnxModel]):
+    def open_analysis(self, model_list: List[DigestOnnxModel]):
         multi_model_analysis = MultiModelAnalysis(model_list)
         self.analysis_window.setCentralWidget(multi_model_analysis)
         self.analysis_window.setWindowIcon(QIcon(":/assets/images/digest_logo_500.jpg"))

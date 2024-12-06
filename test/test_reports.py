@@ -6,7 +6,8 @@ import os
 import unittest
 import tempfile
 import csv
-from utils.onnx_utils import DigestOnnxModel, load_onnx
+import utils.onnx_utils as onnx_utils
+from digest.model_class.digest_onnx_model import DigestOnnxModel
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 TEST_ONNX = os.path.join(TEST_DIR, "resnet18.onnx")
@@ -46,10 +47,13 @@ class TestDigestReports(unittest.TestCase):
                 self.assertEqual(row1, row2, msg=f"Difference in row: {row1} vs {row2}")
 
     def test_against_example_reports(self):
-        model_proto = load_onnx(TEST_ONNX)
+        model_proto = onnx_utils.load_onnx(TEST_ONNX)
         model_name = os.path.splitext(os.path.basename(TEST_ONNX))[0]
         digest_model = DigestOnnxModel(
-            model_proto, onnx_filepath=TEST_ONNX, model_name=model_name, save_proto=False,
+            model_proto,
+            onnx_filepath=TEST_ONNX,
+            model_name=model_name,
+            save_proto=False,
         )
 
         with tempfile.TemporaryDirectory() as tmpdir:
