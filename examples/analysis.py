@@ -90,6 +90,10 @@ def main(onnx_files: str, output_dir: str):
         summary_filepath = os.path.join(output_dir, f"{model_name}_summary.txt")
         digest_model.save_txt_report(summary_filepath)
 
+        # Model summary yaml report
+        summary_filepath = os.path.join(output_dir, f"{model_name}_summary.yaml")
+        digest_model.save_yaml_report(summary_filepath)
+
         # Save csv containing node-level information
         nodes_filepath = os.path.join(output_dir, f"{model_name}_nodes.csv")
         digest_model.save_nodes_csv_report(nodes_filepath)

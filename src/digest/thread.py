@@ -4,13 +4,13 @@
 import os
 from typing import Optional
 from PySide6.QtCore import QThread, Signal
-from utils import onnx_utils
+from digest.model_class.digest_onnx_model import DigestOnnxModel
 from digest.subgraph_analysis.find_match import find_match
 
 
 class StatsThread(QThread):
 
-    completed = Signal(onnx_utils.DigestOnnxModel, str)
+    completed = Signal(DigestOnnxModel, str)
 
     def __init__(
         self,
@@ -31,7 +31,7 @@ class StatsThread(QThread):
         if not self.unique_id:
             raise ValueError("You must specify a unique id.")
 
-        digest_model = onnx_utils.DigestOnnxModel(self.model, save_proto=False)
+        digest_model = DigestOnnxModel(self.model, save_proto=False)
 
         self.completed.emit(digest_model, self.unique_id)
 

@@ -147,6 +147,8 @@ class DigestGuiTest(unittest.TestCase):
                 node_summary = node_window.main_window.centralWidget()
 
                 self.assertIsInstance(node_summary, NodeSummary)
+
+                # This line of code seems redundant but we do this to clean pylance
                 if isinstance(node_summary, NodeSummary):
                     QTest.mouseClick(
                         node_summary.ui.saveCsvBtn, Qt.MouseButton.LeftButton

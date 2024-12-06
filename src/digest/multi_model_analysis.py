@@ -11,6 +11,11 @@ from digest.dialog import ProgressDialog, StatusDialog
 from digest.ui.multimodelanalysis_ui import Ui_multiModelAnalysis
 from digest.histogramchartwidget import StackedHistogramWidget
 from digest.qt_utils import apply_dark_style_sheet
+from digest.model_class.digest_onnx_model import DigestOnnxModel
+from digest.model_class.digest_model import (
+    save_node_shape_counts_csv_report,
+    save_node_type_counts_csv_report,
+)
 from utils import onnx_utils
 
 ROOT_FOLDER = os.path.dirname(__file__)
@@ -21,7 +26,7 @@ class MultiModelAnalysis(QWidget):
 
     def __init__(
         self,
-        model_list: List[onnx_utils.DigestOnnxModel],
+        model_list: List[DigestOnnxModel],
         parent=None,
     ):
         super().__init__(parent)
@@ -203,7 +208,7 @@ class MultiModelAnalysis(QWidget):
                 node_type_counter = digest_model.get_node_type_counts()
 
                 if node_type_counter:
-                    onnx_utils.save_node_type_counts_csv_report(
+                    save_node_type_counts_csv_report(
                         node_type_counter, node_type_filepath
                     )
 
@@ -212,7 +217,7 @@ class MultiModelAnalysis(QWidget):
                 node_shape_filepath = os.path.join(
                     save_directory, f"{digest_model.model_name}_node_shape_counts.csv"
                 )
-                onnx_utils.save_node_shape_counts_csv_report(
+                save_node_shape_counts_csv_report(
                     node_shape_counts, node_shape_filepath
                 )
 
@@ -234,14 +239,14 @@ class MultiModelAnalysis(QWidget):
                 global_node_type_counter = onnx_utils.NodeTypeCounts(
                     self.global_node_type_counter.most_common()
                 )
-                onnx_utils.save_node_type_counts_csv_report(
+                save_node_type_counts_csv_report(
                     global_node_type_counter, global_filepath
                 )
 
                 global_filepath = os.path.join(
                     save_directory, "global_node_shape_counts.csv"
                 )
-                onnx_utils.save_node_shape_counts_csv_report(
+                save_node_shape_counts_csv_report(
                     self.global_node_shape_counter, global_filepath
                 )
 
