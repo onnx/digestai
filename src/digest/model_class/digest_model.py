@@ -2,8 +2,17 @@
 
 import os
 import csv
+from enum import Enum
+from dataclasses import dataclass, field
+from uuid import uuid4
+from abc import ABC, abstractmethod
 from collections import Counter, OrderedDict, defaultdict
 from typing import List, Dict, Optional, Any, Union
+
+
+class SupportedModelTypes(Enum):
+    ONNX = "onnx"
+    REPORT = "report"
 
 
 class NodeParsingException(Exception):
@@ -21,14 +30,13 @@ class NodeTypeCounts(Dict[str, int]):
         super().__init__(*args, **kwargs)
 
 
+@dataclass
 class TensorInfo:
     "Used to store node input and output tensor information"
-
-    def __init__(self) -> None:
-        self.dtype: Optional[str] = None
-        self.dtype_bytes: Optional[int] = None
-        self.size_kbytes: Optional[float] = None
-        self.shape: List[Union[int, str]] = []
+    dtype: Optional[str] = None
+    dtype_bytes: Optional[int] = None
+    size_kbytes: Optional[float] = None
+    shape: List[Union[int, str]] = field(default_factory=list)
 
 
 class TensorData(OrderedDict[str, TensorInfo]):
@@ -39,7 +47,7 @@ class TensorData(OrderedDict[str, TensorInfo]):
 class NodeInfo:
     def __init__(self) -> None:
         self.flops: Optional[int] = None
-        self.parameters: int = 0
+        self.parameters: int = 0  # TODO: should we make this Optional[int] = None?
         self.node_type: Optional[str] = None
         self.attributes: OrderedDict[str, Any] = OrderedDict()
         # We use an ordered dictionary because the order in which
@@ -79,10 +87,57 @@ class NodeInfo:
         return "\n".join(output)
 
 
-# The classes are for type aliasing. Once python 3.10 is the minimum Popwe can switch to TypeAlias
+# The classes are for type aliasing. Once python 3.10 is the minimum we can switch to TypeAlias
 class NodeData(OrderedDict[str, NodeInfo]):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+
+class DigestModel(ABC):
+    def __init__(self, filepath: str, model_name: str):
+        # Public members exposed to the API
+        self.unique_id: str = str(uuid4())
+        self.filepath: Optional[str] = filepath
+        self.model_name: str = model_name
+        self.model_type: Optional[SupportedModelTypes] = None
+        self.node_type_counts: NodeTypeCounts = NodeTypeCounts()
+        self.model_flops: Optional[int] = None
+        self.model_parameters: int = 0
+        self.node_type_flops: Dict[str, int] = {}
+        self.node_type_parameters: Dict[str, int] = {}
+        self.node_data = NodeData()
+        self.model_inputs = TensorData()
+        self.model_outputs = TensorData()
+
+    def get_node_shape_counts(self) -> NodeShapeCounts:
+        tensor_shape_counter = NodeShapeCounts()
+        for _, info in self.node_data.items():
+            shape_hash = tuple([tuple(v.shape) for _, v in info.inputs.items()])
+            if info.node_type:
+                tensor_shape_counter[info.node_type][shape_hash] += 1
+        return tensor_shape_counter
+
+    @abstractmethod
+    def parse_model_nodes(self, *args) -> None:
+        pass
+
+    @abstractmethod
+    def save_yaml_report(self, filepath: str) -> None:
+        pass
+
+    @abstractmethod
+    def save_text_report(self, filepath: str) -> None:
+        pass
+
+    def save_nodes_csv_report(self, filepath: str) -> None:
+        save_nodes_csv_report(self.node_data, filepath)
+
+    def save_node_type_counts_csv_report(self, filepath: str) -> None:
+        if self.node_type_counts:
+            save_node_type_counts_csv_report(self.node_type_counts, filepath)
+
+    def save_node_shape_counts_csv_report(self, filepath: str) -> None:
+        save_node_shape_counts_csv_report(self.get_node_shape_counts(), filepath)
 
 
 def save_nodes_csv_report(node_data: NodeData, filepath: str) -> None:
@@ -136,7 +191,9 @@ def save_nodes_csv_report(node_data: NodeData, filepath: str) -> None:
         writer.writerows(flattened_data)
 
 
-def save_node_type_counts_csv_report(node_data: NodeTypeCounts, filepath: str) -> None:
+def save_node_type_counts_csv_report(
+    node_type_counts: NodeTypeCounts, filepath: str
+) -> None:
 
     parent_dir = os.path.dirname(os.path.abspath(filepath))
     if not os.path.exists(parent_dir):
@@ -147,12 +204,12 @@ def save_node_type_counts_csv_report(node_data: NodeTypeCounts, filepath: str) -
     with open(filepath, "w", encoding="utf-8", newline="") as csvfile:
         writer = csv.writer(csvfile, lineterminator="\n")
         writer.writerow(header)
-        for node_type, node_count in node_data.items():
+        for node_type, node_count in node_type_counts.items():
             writer.writerow([node_type, node_count])
 
 
 def save_node_shape_counts_csv_report(
-    node_data: NodeShapeCounts, filepath: str
+    node_shape_counts: NodeShapeCounts, filepath: str
 ) -> None:
 
     parent_dir = os.path.dirname(os.path.abspath(filepath))
@@ -164,7 +221,7 @@ def save_node_shape_counts_csv_report(
     with open(filepath, "w", encoding="utf-8", newline="") as csvfile:
         writer = csv.writer(csvfile, dialect="excel", lineterminator="\n")
         writer.writerow(header)
-        for node_type, node_info in node_data.items():
+        for node_type, node_info in node_shape_counts.items():
             info_iter = iter(node_info.items())
             for shape, count in info_iter:
                 writer.writerow([node_type, shape, count])

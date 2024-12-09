@@ -1,38 +1,37 @@
 # Copyright(C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
 import os
-from uuid import uuid4
 from typing import List, Dict, Optional, Tuple, Union, cast
 from datetime import datetime
+import yaml
 import numpy as np
 import onnx
-import yaml
 from prettytable import PrettyTable
 from digest.model_class.digest_model import (
+    DigestModel,
+    SupportedModelTypes,
     NodeTypeCounts,
-    NodeData,
-    NodeShapeCounts,
     NodeInfo,
     TensorData,
     TensorInfo,
-    save_nodes_csv_report,
 )
 import utils.onnx_utils as onnx_utils
 
 
-class DigestOnnxModel:
+class DigestOnnxModel(DigestModel):
     def __init__(
         self,
         onnx_model: onnx.ModelProto,
-        onnx_filepath: Optional[str] = None,
-        model_name: Optional[str] = None,
+        onnx_filepath: str = "",
+        model_name: str = "",
         save_proto: bool = True,
     ) -> None:
+        super().__init__(onnx_filepath, model_name)
+
+        self.model_type = SupportedModelTypes.ONNX
+
         # Public members exposed to the API
-        self.unique_id: str = str(uuid4())
-        self.filepath: Optional[str] = onnx_filepath
         self.model_proto: Optional[onnx.ModelProto] = onnx_model if save_proto else None
-        self.model_name: Optional[str] = model_name
         self.model_version: Optional[int] = None
         self.graph_name: Optional[str] = None
         self.producer_name: Optional[str] = None
@@ -40,14 +39,6 @@ class DigestOnnxModel:
         self.ir_version: Optional[int] = None
         self.opset: Optional[int] = None
         self.imports: Dict[str, int] = {}
-        self.node_type_counts: NodeTypeCounts = NodeTypeCounts()
-        self.model_flops: Optional[int] = None
-        self.model_parameters: int = 0
-        self.node_type_flops: Dict[str, int] = {}
-        self.node_type_parameters: Dict[str, int] = {}
-        self.per_node_info = NodeData()
-        self.model_inputs = TensorData()
-        self.model_outputs = TensorData()
 
         # Private members not intended to be exposed
         self.input_tensors_: Dict[str, onnx.ValueInfoProto] = {}
@@ -242,7 +233,7 @@ class DigestOnnxModel:
             # TODO: I have encountered models containing nodes with no name. It would be a good idea
             # to have this type of model info fed back to the user through a warnings section.
             if not node.name:
-                node.name = f"{node.op_type}_{len(self.per_node_info)}"
+                node.name = f"{node.op_type}_{len(self.node_data)}"
 
             node_info.node_type = node.op_type
             input_tensor_info, output_tensor_info = self.get_node_tensor_info_(node)
@@ -266,10 +257,10 @@ class DigestOnnxModel:
             for attribute in node.attribute:
                 node_info.attributes.update(onnx_utils.attribute_to_dict(attribute))
 
-            # if node.name in self.per_node_info:
+            # if node.name in self.node_data:
             #     print(f"Node name {node.name} is a duplicate.")
 
-            self.per_node_info[node.name] = node_info
+            self.node_data[node.name] = node_info
 
             if node.op_type in unsupported_ops:
                 self.model_flops = None
@@ -515,7 +506,42 @@ class DigestOnnxModel:
                     self.node_type_flops.get(node.op_type, 0) + node_info.flops
                 )
 
-    def save_txt_report(self, filepath: str) -> None:
+    def save_yaml_report(self, filepath: str) -> None:
+
+        parent_dir = os.path.dirname(os.path.abspath(filepath))
+        if not os.path.exists(parent_dir):
+            raise FileNotFoundError(f"Directory {parent_dir} does not exist.")
+
+        report_date = datetime.now().strftime("%B %d, %Y")
+
+        input_tensors = dict({k: vars(v) for k, v in self.model_inputs.items()})
+        output_tensors = dict({k: vars(v) for k, v in self.model_outputs.items()})
+
+        yaml_data = {
+            "report_date": report_date,
+            "onnx_file": self.filepath,
+            "model_name": self.model_name,
+            "model_version": self.model_version,
+            "graph_name": self.graph_name,
+            "producer_name": self.producer_name,
+            "producer_version": self.producer_version,
+            "ir_version": self.ir_version,
+            "opset": self.opset,
+            "import_list": self.imports,
+            "graph_nodes": sum(self.node_type_counts.values()),
+            "model_parameters": self.model_parameters,
+            "model_flops": self.model_flops,
+            "node_type_counts": dict(self.node_type_counts),
+            "node_type_flops": dict(self.node_type_flops),
+            "node_type_parameters": self.node_type_parameters,
+            "input_tensors": input_tensors,
+            "output_tensors": output_tensors,
+        }
+
+        with open(filepath, "w", encoding="utf-8") as f_p:
+            yaml.dump(yaml_data, f_p, sort_keys=False)
+
+    def save_text_report(self, filepath: str) -> None:
 
         parent_dir = os.path.dirname(os.path.abspath(filepath))
         if not os.path.exists(parent_dir):
@@ -618,51 +644,7 @@ class DigestOnnxModel:
             f_p.write(output_table.get_string())
             f_p.write("\n\n")
 
-    def save_yaml_report(self, filepath: str) -> None:
-
-        parent_dir = os.path.dirname(os.path.abspath(filepath))
-        if not os.path.exists(parent_dir):
-            raise FileNotFoundError(f"Directory {parent_dir} does not exist.")
-
-        report_date = datetime.now().strftime("%B %d, %Y")
-
-        input_tensors = dict({k: vars(v) for k, v in self.model_inputs.items()})
-        output_tensors = dict({k: vars(v) for k, v in self.model_outputs.items()})
-
-        yaml_data = {
-            "report_date": report_date,
-            "onnx_file": self.filepath,
-            "model_name": self.model_name,
-            "model_version": self.model_version,
-            "graph_name": self.graph_name,
-            "producer_name": self.producer_name,
-            "ir_version": self.ir_version,
-            "opset": self.opset,
-            "import_list": self.imports,
-            "graph_nodes": sum(self.node_type_counts.values()),
-            "model_parameters": self.model_parameters,
-            "model_flops": self.model_flops,
-            "operator_intensity": self.node_type_flops,
-            "node_histogram": dict(self.node_type_counts),
-            "input_tensors": input_tensors,
-            "output_tensors": output_tensors,
-        }
-
-        with open(filepath, "w", encoding="utf-8") as f_p:
-            yaml.dump(yaml_data, f_p, sort_keys=False)
-
-    def save_nodes_csv_report(self, filepath: str) -> None:
-        save_nodes_csv_report(self.per_node_info, filepath)
-
     def get_node_type_counts(self) -> Union[NodeTypeCounts, None]:
         if not self.node_type_counts and self.model_proto:
             self.node_type_counts = onnx_utils.get_node_type_counts(self.model_proto)
         return self.node_type_counts if self.node_type_counts else None
-
-    def get_node_shape_counts(self) -> NodeShapeCounts:
-        tensor_shape_counter = NodeShapeCounts()
-        for _, info in self.per_node_info.items():
-            shape_hash = tuple([tuple(v.shape) for _, v in info.inputs.items()])
-            if info.node_type:
-                tensor_shape_counter[info.node_type][shape_hash] += 1
-        return tensor_shape_counter

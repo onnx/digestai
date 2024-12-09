@@ -11,12 +11,15 @@ from digest.dialog import ProgressDialog, StatusDialog
 from digest.ui.multimodelanalysis_ui import Ui_multiModelAnalysis
 from digest.histogramchartwidget import StackedHistogramWidget
 from digest.qt_utils import apply_dark_style_sheet
-from digest.model_class.digest_onnx_model import DigestOnnxModel
 from digest.model_class.digest_model import (
+    NodeTypeCounts,
+    NodeShapeCounts,
     save_node_shape_counts_csv_report,
     save_node_type_counts_csv_report,
 )
-from utils import onnx_utils
+from digest.model_class.digest_onnx_model import DigestOnnxModel
+from digest.model_class.digest_report_model import DigestReportModel
+import utils.onnx_utils as onnx_utils
 
 ROOT_FOLDER = os.path.dirname(__file__)
 
@@ -26,7 +29,7 @@ class MultiModelAnalysis(QWidget):
 
     def __init__(
         self,
-        model_list: List[DigestOnnxModel],
+        model_list: List[Union[DigestOnnxModel, DigestReportModel]],
         parent=None,
     ):
         super().__init__(parent)
@@ -46,9 +49,7 @@ class MultiModelAnalysis(QWidget):
         self.global_node_type_counter: Counter[str] = Counter()
 
         # Holds the data for node shape counts across all models
-        self.global_node_shape_counter: onnx_utils.NodeShapeCounts = defaultdict(
-            Counter
-        )
+        self.global_node_shape_counter: NodeShapeCounts = defaultdict(Counter)
 
         # Holds the data for all models statistics
         self.global_model_data: Dict[str, Dict[str, Union[int, None]]] = {}
@@ -62,13 +63,17 @@ class MultiModelAnalysis(QWidget):
         self.ui.dataTable.setSortingEnabled(False)
 
         for row, model in enumerate(model_list):
+
+            if not isinstance(model, DigestOnnxModel):
+                continue
+
             item = QTableWidgetItem(str(model.model_name))
             self.ui.dataTable.setItem(row, 0, item)
 
             item = QTableWidgetItem(str(model.opset))
             self.ui.dataTable.setItem(row, 1, item)
 
-            item = QTableWidgetItem(str(len(model.per_node_info)))
+            item = QTableWidgetItem(str(len(model.node_data)))
             self.ui.dataTable.setItem(row, 2, item)
 
             item = QTableWidgetItem(str(model.model_parameters))
@@ -87,6 +92,9 @@ class MultiModelAnalysis(QWidget):
 
             if digest_model.model_name is None:
                 digest_model.model_name = f"model_{i}"
+
+            if not isinstance(digest_model, DigestOnnxModel):
+                continue
 
             if digest_model.model_proto:
                 dynamic_input_dims = onnx_utils.get_dynamic_input_dims(
@@ -197,29 +205,21 @@ class MultiModelAnalysis(QWidget):
                     save_directory, f"{digest_model.model_name}_summary.txt"
                 )
 
-                digest_model.save_txt_report(summary_filepath)
+                digest_model.save_text_report(summary_filepath)
 
                 # Save csv of node type counts
                 node_type_filepath = os.path.join(
                     save_directory, f"{digest_model.model_name}_node_type_counts.csv"
                 )
 
-                # Save csv containing node type counter
-                node_type_counter = digest_model.get_node_type_counts()
-
-                if node_type_counter:
-                    save_node_type_counts_csv_report(
-                        node_type_counter, node_type_filepath
-                    )
+                if digest_model.node_type_counts:
+                    digest_model.save_node_type_counts_csv_report(node_type_filepath)
 
                 # Save csv containing node shape counts per op_type
-                node_shape_counts = digest_model.get_node_shape_counts()
                 node_shape_filepath = os.path.join(
                     save_directory, f"{digest_model.model_name}_node_shape_counts.csv"
                 )
-                save_node_shape_counts_csv_report(
-                    node_shape_counts, node_shape_filepath
-                )
+                digest_model.save_node_shape_counts_csv_report(node_shape_filepath)
 
                 # Save csv containing all node-level information
                 nodes_filepath = os.path.join(
@@ -236,7 +236,7 @@ class MultiModelAnalysis(QWidget):
                 global_filepath = os.path.join(
                     save_directory, "global_node_type_counts.csv"
                 )
-                global_node_type_counter = onnx_utils.NodeTypeCounts(
+                global_node_type_counter = NodeTypeCounts(
                     self.global_node_type_counter.most_common()
                 )
                 save_node_type_counts_csv_report(

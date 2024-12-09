@@ -1,7 +1,5 @@
 # Copyright(C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
-"""Unit tests for Vitis ONNX Model Analyzer """
-
 import os
 import unittest
 import tempfile
@@ -11,8 +9,13 @@ from digest.model_class.digest_onnx_model import DigestOnnxModel
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 TEST_ONNX = os.path.join(TEST_DIR, "resnet18.onnx")
-TEST_SUMMARY_TXT_REPORT = os.path.join(TEST_DIR, "resnet18_test_summary.txt")
-TEST_NODES_CSV_REPORT = os.path.join(TEST_DIR, "resnet18_test_nodes.csv")
+TEST_SUMMARY_TEXT_REPORT = os.path.join(
+    TEST_DIR, "resnet18_reports/resnet18_report.txt"
+)
+TEST_SUMMARY_YAML_REPORT = os.path.join(
+    TEST_DIR, "resnet18_reports/resnet18_report.yaml"
+)
+TEST_NODES_CSV_REPORT = os.path.join(TEST_DIR, "resnet18_reports/resnet18_nodes.csv")
 
 
 class TestDigestReports(unittest.TestCase):
@@ -47,30 +50,41 @@ class TestDigestReports(unittest.TestCase):
                 self.assertEqual(row1, row2, msg=f"Difference in row: {row1} vs {row2}")
 
     def test_against_example_reports(self):
-        model_proto = onnx_utils.load_onnx(TEST_ONNX)
+        model_proto = onnx_utils.load_onnx(TEST_ONNX, load_external_data=False)
         model_name = os.path.splitext(os.path.basename(TEST_ONNX))[0]
+        opt_model, _ = onnx_utils.optimize_onnx_model(model_proto)
         digest_model = DigestOnnxModel(
-            model_proto,
+            opt_model,
             onnx_filepath=TEST_ONNX,
             model_name=model_name,
             save_proto=False,
         )
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            # Model summary text report
-            summary_filepath = os.path.join(tmpdir, f"{model_name}_summary.txt")
-            digest_model.save_txt_report(summary_filepath)
-
-            with self.subTest("Testing summary text file"):
+            # Model text report
+            text_report_filepath = os.path.join(tmpdir, f"{model_name}_report.txt")
+            digest_model.save_text_report(text_report_filepath)
+            with self.subTest("Testing report text file"):
                 self.compare_files_line_by_line(
-                    TEST_SUMMARY_TXT_REPORT,
-                    summary_filepath,
+                    TEST_SUMMARY_TEXT_REPORT,
+                    text_report_filepath,
                     skip_lines=2,
+                )
+
+            # Model yaml report
+            yaml_report_filepath = os.path.join(tmpdir, f"{model_name}_report.yaml")
+            digest_model.save_yaml_report(yaml_report_filepath)
+            with self.subTest("Testing report yaml file"):
+                self.compare_files_line_by_line(
+                    TEST_SUMMARY_YAML_REPORT, yaml_report_filepath, skip_lines=2
                 )
 
             # Save CSV containing node-level information
             nodes_filepath = os.path.join(tmpdir, f"{model_name}_nodes.csv")
             digest_model.save_nodes_csv_report(nodes_filepath)
-
             with self.subTest("Testing nodes csv file"):
                 self.compare_csv_files(TEST_NODES_CSV_REPORT, nodes_filepath)
+
+
+if __name__ == "__main__":
+    unittest.main()

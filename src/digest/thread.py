@@ -2,10 +2,35 @@
 
 # pylint: disable=no-name-in-module
 import os
-from typing import Optional
-from PySide6.QtCore import QThread, Signal
+from typing import List, Optional
+from PySide6.QtCore import QThread, Signal, QEventLoop, QTimer
 from digest.model_class.digest_onnx_model import DigestOnnxModel
 from digest.subgraph_analysis.find_match import find_match
+
+
+def wait_threads(threads: List[QThread], timeout=10000) -> bool:
+
+    loop = QEventLoop()
+    timer = QTimer()
+    timer.setSingleShot(True)
+    timer.timeout.connect(loop.quit)
+
+    def check_threads():
+        if all(thread.isFinished() for thread in threads):
+            loop.quit()
+
+    check_timer = QTimer()
+    check_timer.timeout.connect(check_threads)
+    check_timer.start(100)  # Check every 100ms
+
+    timer.start(timeout)
+    loop.exec()
+
+    check_timer.stop()
+    timer.stop()
+
+    # Return True if all threads finished, False if timed out
+    return all(thread.isFinished() for thread in threads)
 
 
 class StatsThread(QThread):
@@ -34,6 +59,9 @@ class StatsThread(QThread):
         digest_model = DigestOnnxModel(self.model, save_proto=False)
 
         self.completed.emit(digest_model, self.unique_id)
+
+    def wait(self, timeout=1000):
+        wait_threads([self], timeout)
 
 
 class SimilarityThread(QThread):
@@ -78,3 +106,6 @@ class SimilarityThread(QThread):
                 False, self.model_id, most_similar, self.png_filepath
             )
             print(f"Issue creating similarity analysis: {e}")
+
+    def wait(self, timeout=1000):
+        wait_threads([self], timeout)
