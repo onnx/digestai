@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 # pylint: disable=no-name-in-module
 from PySide6.QtTest import QTest
-from PySide6.QtCore import Qt, QTimer, QEventLoop
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication
 
 import digest.main
