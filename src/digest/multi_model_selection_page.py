@@ -2,7 +2,7 @@
 
 import os
 import glob
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Union
 from collections import defaultdict
 from google.protobuf.message import DecodeError
 import onnx
@@ -22,6 +22,8 @@ from digest.dialog import WarnDialog, ProgressDialog
 from digest.ui.multimodelselection_page_ui import Ui_MultiModelSelection
 from digest.multi_model_analysis import MultiModelAnalysis
 from digest.qt_utils import apply_dark_style_sheet, prompt_user_ram_limit
+from digest.model_class.digest_onnx_model import DigestOnnxModel
+from digest.model_class.digest_report_model import DigestReportModel
 from utils import onnx_utils
 
 
@@ -33,7 +35,9 @@ class AnalysisThread(QThread):
 
     def __init__(self):
         super().__init__()
-        self.model_dict: Dict[str, Optional[onnx_utils.DigestOnnxModel]] = {}
+        self.model_dict: Dict[
+            str, Optional[Union[DigestOnnxModel, DigestReportModel]]
+        ] = {}
         self.user_canceled = False
 
     def run(self):
@@ -47,18 +51,25 @@ class AnalysisThread(QThread):
             self.step_progress.emit()
             if model:
                 continue
-            model_name = os.path.splitext(os.path.basename(file))[0]
-            model_proto = onnx_utils.load_onnx(file, False)
-            self.model_dict[file] = onnx_utils.DigestOnnxModel(
-                model_proto, onnx_filepath=file, model_name=model_name, save_proto=False
-            )
+            model_name, file_ext = os.path.splitext(os.path.basename(file))
+            if file_ext == ".onnx":
+                model_proto = onnx_utils.load_onnx(file, False)
+                self.model_dict[file] = DigestOnnxModel(
+                    model_proto,
+                    onnx_filepath=file,
+                    model_name=model_name,
+                    save_proto=False,
+                )
+            elif file_ext == ".yaml":
+                self.model_dict[file] = DigestReportModel(file)
 
         self.close_progress.emit()
 
         model_list = [
             model
             for model in self.model_dict.values()
-            if isinstance(model, onnx_utils.DigestOnnxModel)
+            if isinstance(model, DigestOnnxModel)
+            or isinstance(model, DigestReportModel)
         ]
 
         self.completed.emit(model_list)
@@ -94,7 +105,9 @@ class MultiModelSelectionPage(QWidget):
 
         self.ui.openAnalysisBtn.clicked.connect(self.start_analysis)
 
-        self.model_dict: Dict[str, Optional[onnx_utils.DigestOnnxModel]] = {}
+        self.model_dict: Dict[
+            str, Optional[Union[DigestOnnxModel, DigestReportModel]]
+        ] = {}
 
         self.analysis_thread: Optional[AnalysisThread] = None
         self.progress: Optional[ProgressDialog] = None
@@ -203,9 +216,10 @@ class MultiModelSelectionPage(QWidget):
             try:
                 models_loaded += 1
                 model = onnx.load(filepath, load_external_data=False)
-                dialog_msg = f"""Warning: System RAM has exceeded the threshold of {memory_limit_percentage}%.
-                    No further models will be loaded.
-                """
+                dialog_msg = (
+                    "Warning: System RAM has exceeded the threshold of "
+                    f"{memory_limit_percentage}%. No further models will be loaded. "
+                )
                 if prompt_user_ram_limit(
                     sys_ram_percent_limit=memory_limit_percentage,
                     message=dialog_msg,
@@ -289,7 +303,9 @@ class MultiModelSelectionPage(QWidget):
         self.analysis_thread.model_dict = self.model_dict
         self.analysis_thread.start()
 
-    def open_analysis(self, model_list: List[onnx_utils.DigestOnnxModel]):
+    def open_analysis(
+        self, model_list: List[Union[DigestOnnxModel, DigestReportModel]]
+    ):
         multi_model_analysis = MultiModelAnalysis(model_list)
         self.analysis_window.setCentralWidget(multi_model_analysis)
         self.analysis_window.setWindowIcon(QIcon(":/assets/images/digest_logo_500.jpg"))
