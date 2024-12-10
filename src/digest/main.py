@@ -474,8 +474,9 @@ class DigestApp(QMainWindow):
             basename = os.path.splitext(os.path.basename(filepath))
             model_name = basename[0]
 
+            # Save the model proto so we can use the Freeze Inputs feature
             digest_model = DigestOnnxModel(
-                onnx_model=model, model_name=model_name, save_proto=False
+                onnx_model=opt_model, model_name=model_name, save_proto=True
             )
             model_id = digest_model.unique_id
 
@@ -483,9 +484,6 @@ class DigestApp(QMainWindow):
             self.similarity_save_button_flag[model_id] = False
 
             self.digest_models[model_id] = digest_model
-
-            # We must set the proto for the model_summary freeze_inputs
-            digest_model.model_proto = opt_model
 
             model_summary = modelSummary(digest_model)
             if model_summary.freeze_inputs:

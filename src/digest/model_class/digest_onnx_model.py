@@ -3,6 +3,7 @@
 import os
 from typing import List, Dict, Optional, Tuple, Union, cast
 from datetime import datetime
+from collections import OrderedDict
 import yaml
 import numpy as np
 import onnx
@@ -38,7 +39,7 @@ class DigestOnnxModel(DigestModel):
         self.producer_version: Optional[str] = None
         self.ir_version: Optional[int] = None
         self.opset: Optional[int] = None
-        self.imports: Dict[str, int] = {}
+        self.imports: OrderedDict[str, int] = OrderedDict()
 
         # Private members not intended to be exposed
         self.input_tensors_: Dict[str, onnx.ValueInfoProto] = {}
@@ -55,9 +56,12 @@ class DigestOnnxModel(DigestModel):
         self.producer_version = model_proto.producer_version
         self.ir_version = model_proto.ir_version
         self.opset = onnx_utils.get_opset(model_proto)
-        self.imports = {
-            import_.domain: import_.version for import_ in model_proto.opset_import
-        }
+        self.imports = OrderedDict(
+            sorted(
+                (import_.domain, import_.version)
+                for import_ in model_proto.opset_import
+            )
+        )
 
         self.model_inputs = onnx_utils.get_model_input_shapes_types(model_proto)
         self.model_outputs = onnx_utils.get_model_output_shapes_types(model_proto)
@@ -527,7 +531,7 @@ class DigestOnnxModel(DigestModel):
             "producer_version": self.producer_version,
             "ir_version": self.ir_version,
             "opset": self.opset,
-            "import_list": self.imports,
+            "import_list": dict(self.imports),
             "graph_nodes": sum(self.node_type_counts.values()),
             "model_parameters": self.model_parameters,
             "model_flops": self.model_flops,
