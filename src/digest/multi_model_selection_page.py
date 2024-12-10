@@ -217,8 +217,8 @@ class MultiModelSelectionPage(QWidget):
                 models_loaded += 1
                 model = onnx.load(filepath, load_external_data=False)
                 dialog_msg = (
-                    f"Warning: System RAM has exceeded the threshold of {memory_limit_percentage}%. "
-                    "No further models will be loaded. "
+                    "Warning: System RAM has exceeded the threshold of "
+                    f"{memory_limit_percentage}%. No further models will be loaded. "
                 )
                 if prompt_user_ram_limit(
                     sys_ram_percent_limit=memory_limit_percentage,
