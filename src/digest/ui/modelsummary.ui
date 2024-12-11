@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>980</width>
-    <height>687</height>
+    <width>1061</width>
+    <height>837</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -153,9 +153,9 @@ border-top-right-radius: 10px;</string>
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>0</y>
+          <y>-558</y>
           <width>991</width>
-          <height>1453</height>
+          <height>1443</height>
          </rect>
         </property>
         <property name="styleSheet">
@@ -244,7 +244,7 @@ QFrame:hover {
                   <property name="rightMargin">
                    <number>6</number>
                   </property>
-                  <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                  <item>
                    <widget class="QLabel" name="opsetLabel">
                     <property name="sizePolicy">
                      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -271,7 +271,7 @@ QFrame:hover {
                     </property>
                    </widget>
                   </item>
-                  <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                  <item>
                    <widget class="QLabel" name="opsetVersion">
                     <property name="sizePolicy">
                      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -667,19 +667,31 @@ QFrame:hover {
              <item>
               <widget class="QWidget" name="similarityWidget" native="true">
                <property name="sizePolicy">
-                <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
                  <horstretch>0</horstretch>
                  <verstretch>0</verstretch>
                 </sizepolicy>
                </property>
+               <property name="minimumSize">
+                <size>
+                 <width>300</width>
+                 <height>500</height>
+                </size>
+               </property>
                <layout class="QVBoxLayout" name="placeholderWidget">
-                <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                <item>
                  <widget class="ClickableLabel" name="similarityImg">
                   <property name="sizePolicy">
-                   <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                     <horstretch>0</horstretch>
                     <verstretch>0</verstretch>
                    </sizepolicy>
+                  </property>
+                  <property name="minimumSize">
+                   <size>
+                    <width>0</width>
+                    <height>0</height>
+                   </size>
                   </property>
                   <property name="maximumSize">
                    <size>
@@ -689,6 +701,9 @@ QFrame:hover {
                   </property>
                   <property name="text">
                    <string>Loading...</string>
+                  </property>
+                  <property name="scaledContents">
+                   <bool>false</bool>
                   </property>
                   <property name="alignment">
                    <set>Qt::AlignmentFlag::AlignCenter</set>
@@ -834,7 +849,7 @@ QFrame:hover {
              <item>
               <widget class="PieChartWidget" name="flopsPieChart" native="true">
                <property name="sizePolicy">
-                <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+                <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
                  <horstretch>0</horstretch>
                  <verstretch>0</verstretch>
                 </sizepolicy>
@@ -861,7 +876,7 @@ QFrame:hover {
            </property>
            <item>
             <layout class="QVBoxLayout" name="inputsLayout">
-             <item alignment="Qt::AlignmentFlag::AlignVCenter">
+             <item>
               <widget class="QLabel" name="inputsLabel">
                <property name="styleSheet">
                 <string notr="true">QLabel {
@@ -875,7 +890,7 @@ QFrame:hover {
                </property>
               </widget>
              </item>
-             <item alignment="Qt::AlignmentFlag::AlignVCenter">
+             <item>
               <widget class="QTableWidget" name="inputsTable">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
@@ -975,7 +990,7 @@ QScrollBar::handle:vertical {
              </item>
             </layout>
            </item>
-           <item alignment="Qt::AlignmentFlag::AlignTop">
+           <item>
             <widget class="QPushButton" name="freezeButton">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -1218,7 +1233,7 @@ QScrollBar::handle:vertical {
           </property>
          </widget>
         </item>
-        <item alignment="Qt::AlignmentFlag::AlignRight">
+        <item>
          <widget class="QTableWidget" name="modelProtoTable">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">

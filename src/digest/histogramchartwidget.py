@@ -140,7 +140,7 @@ class StackedHistogramWidget(QWidget):
         super(StackedHistogramWidget, self).__init__(*args, **kwargs)
 
         self.plot_widget = pg.PlotWidget()
-        self.plot_widget.setMaximumHeight(150)
+        self.plot_widget.setMaximumHeight(200)
         plot_item = self.plot_widget.getPlotItem()
         if plot_item:
             plot_item.setContentsMargins(0, 0, 0, 0)

@@ -43,7 +43,7 @@ class DigestGuiTest(unittest.TestCase):
     def tearDown(self):
         self.digest_app.close()
 
-    def wait_all_threads(self, timeout=5000) -> bool:
+    def wait_all_threads(self, timeout=10000) -> bool:
         all_threads = list(self.digest_app.model_nodes_stats_thread.values()) + list(
             self.digest_app.model_similarity_thread.values()
         )

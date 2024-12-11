@@ -49,12 +49,18 @@ class DigestReportModel(DigestModel):
 
         self.model_type = SupportedModelTypes.REPORT
 
+        self.is_valid = self.validate_yaml(report_filepath)
+
+        if not self.is_valid:
+            print(f"The yaml file {report_filepath} is not a valid digest report.")
+            return
+
         self.model_data = OrderedDict()
         with open(report_filepath, "r", encoding="utf-8") as yaml_f:
             self.model_data = yaml.safe_load(yaml_f)
 
         model_name = self.model_data["model_name"]
-        super().__init__(report_filepath, model_name)
+        super().__init__(report_filepath, model_name, SupportedModelTypes.REPORT)
 
         self.similarity_heatmap_path: Optional[str] = None
         self.node_data = NodeData()
@@ -106,8 +112,8 @@ class DigestReportModel(DigestModel):
                     self.node_data[node_name] = node_info
 
         # Unpack the model type agnostic values
-        self.model_flops = self.model_data["model_flops"]
-        self.model_parameters = self.model_data["model_parameters"]
+        self.flops = self.model_data["flops"]
+        self.parameters = self.model_data["parameters"]
         self.node_type_flops = self.model_data["node_type_flops"]
         self.node_type_parameters = self.model_data["node_type_parameters"]
         self.node_type_counts = self.model_data["node_type_counts"]
@@ -124,6 +130,41 @@ class DigestReportModel(DigestModel):
                 for key, val in self.model_data["output_tensors"].items()
             }
         )
+
+    def validate_yaml(self, report_file_path: str) -> bool:
+        """Check that the provided yaml file is indeed a Digest Report file."""
+        expected_keys = [
+            "report_date",
+            "model_file",
+            "model_type",
+            "model_name",
+            "flops",
+            "node_type_flops",
+            "node_type_parameters",
+            "node_type_counts",
+            "input_tensors",
+            "output_tensors",
+        ]
+        try:
+            with open(report_file_path, "r", encoding="utf-8") as file:
+                yaml_content = yaml.safe_load(file)
+
+            if not isinstance(yaml_content, dict):
+                print("Error: YAML content is not a dictionary")
+                return False
+
+            for key in expected_keys:
+                if key not in yaml_content:
+                    # print(f"Error: Missing required key '{key}'")
+                    return False
+
+            return True
+        except yaml.YAMLError as _:
+            # print(f"Error parsing YAML file: {e}")
+            return False
+        except IOError as _:
+            # print(f"Error reading file: {e}")
+            return False
 
     def parse_model_nodes(self) -> None:
         """There are no model nodes to parse"""

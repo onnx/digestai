@@ -7,6 +7,8 @@ from typing import Optional, Union
 
 # pylint: disable=no-name-in-module
 from PySide6.QtWidgets import QWidget
+from PySide6.QtGui import QMovie
+from PySide6.QtCore import QSize
 
 from onnx import ModelProto
 
@@ -36,6 +38,12 @@ class modelSummary(QWidget):
         self.digest_model = digest_model
         self.model_proto: Optional[ModelProto] = None
         model_name: str = digest_model.model_name if digest_model.model_name else ""
+
+        self.load_gif = QMovie(":/assets/gifs/load.gif")
+        # We set the size of the GIF to half the original
+        self.load_gif.setScaledSize(QSize(214, 120))
+        self.ui.similarityImg.setMovie(self.load_gif)
+        self.load_gif.start()
 
         # There is no freezing if the model is not ONNX
         self.ui.freezeButton.setVisible(False)

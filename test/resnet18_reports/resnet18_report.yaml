@@ -1,5 +1,6 @@
 report_date: December 06, 2024
-onnx_file: C:\Users\pcolange\Projects\digestai\test\resnet18.onnx
+model_file: C:\Users\pcolange\Projects\digestai\test\resnet18.onnx
+model_type: onnx
 model_name: resnet18
 model_version: 0
 graph_name: main_graph
@@ -18,8 +19,8 @@ import_list:
   com.microsoft.nchwc: 1
   org.pytorch.aten: 1
 graph_nodes: 49
-model_parameters: 11684712
-model_flops: 3632136680
+parameters: 11684712
+flops: 3632136680
 node_type_counts:
   Conv: 20
   Relu: 17

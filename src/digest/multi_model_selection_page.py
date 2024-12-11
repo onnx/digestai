@@ -93,8 +93,10 @@ class MultiModelSelectionPage(QWidget):
         self.ui.warningLabel.hide()
         self.item_model = QStandardItemModel()
         self.item_model.itemChanged.connect(self.update_num_selected_label)
-        self.ui.selectAllBox.setCheckState(Qt.CheckState.Checked)
-        self.ui.selectAllBox.stateChanged.connect(self.update_list_view_items)
+        self.ui.radioAll.setChecked(True)
+        self.ui.radioAll.toggled.connect(self.update_list_view_items)
+        self.ui.radioONNX.toggled.connect(self.update_list_view_items)
+        self.ui.radioReports.toggled.connect(self.update_list_view_items)
         self.ui.selectFolderBtn.clicked.connect(self.openFolder)
         self.ui.duplicateLabel.hide()
         self.ui.modelListView.setModel(self.item_model)
@@ -178,10 +180,20 @@ class MultiModelSelectionPage(QWidget):
             self.ui.openAnalysisBtn.setEnabled(False)
 
     def update_list_view_items(self):
-        state = self.ui.selectAllBox.checkState()
+        radio_all_state = self.ui.radioAll.isChecked()
+        radio_onnx_state = self.ui.radioONNX.isChecked()
+        radio_reports_state = self.ui.radioReports.isChecked()
         for row in range(self.item_model.rowCount()):
             item = self.item_model.item(row)
-            item.setCheckState(state)
+            value = item.data(Qt.ItemDataRole.DisplayRole)
+            if radio_all_state:
+                item.setCheckState(Qt.CheckState.Checked)
+            elif os.path.splitext(value)[-1] == ".onnx" and radio_onnx_state:
+                item.setCheckState(Qt.CheckState.Checked)
+            elif os.path.splitext(value)[-1] == ".yaml" and radio_reports_state:
+                item.setCheckState(Qt.CheckState.Checked)
+            else:
+                item.setCheckState(Qt.CheckState.Unchecked)
 
     def set_directory(self, directory: str):
         """
@@ -197,15 +209,30 @@ class MultiModelSelectionPage(QWidget):
             return
 
         progress = ProgressDialog("Searching Directory for ONNX Files", 0, self)
+
         onnx_file_list = list(
             glob.glob(os.path.join(directory, "**/*.onnx"), recursive=True)
         )
+        onnx_file_list = [os.path.normpath(model_file) for model_file in onnx_file_list]
 
-        onnx_file_list = [os.path.normpath(onnx_file) for onnx_file in onnx_file_list]
+        yaml_file_list = list(
+            glob.glob(os.path.join(directory, "**/*.yaml"), recursive=True)
+        )
+        yaml_file_list = [os.path.normpath(model_file) for model_file in yaml_file_list]
+
+        # Filter out YAML files that are not valid reports
+        report_file_list = []
+        for yaml_file in yaml_file_list:
+            digest_report = DigestReportModel(yaml_file)
+            if digest_report.is_valid:
+                report_file_list.append(yaml_file)
+
+        total_num_models = len(onnx_file_list) + len(report_file_list)
+
         serialized_models_paths: defaultdict[bytes, List[str]] = defaultdict(list)
 
         progress.close()
-        progress = ProgressDialog("Loading ONNX Models", len(onnx_file_list), self)
+        progress = ProgressDialog("Loading Models", total_num_models, self)
 
         memory_limit_percentage = 90
         models_loaded = 0
@@ -215,7 +242,9 @@ class MultiModelSelectionPage(QWidget):
                 break
             try:
                 models_loaded += 1
-                model = onnx.load(filepath, load_external_data=False)
+                if os.path.splitext(filepath)[-1] == ".onnx":
+                    model = onnx.load(filepath, load_external_data=False)
+                    serialized_models_paths[model.SerializeToString()].append(filepath)
                 dialog_msg = (
                     "Warning: System RAM has exceeded the threshold of "
                     f"{memory_limit_percentage}%. No further models will be loaded. "
@@ -226,7 +255,7 @@ class MultiModelSelectionPage(QWidget):
                     parent=self,
                 ):
                     self.update_warning_label(
-                        f"Loaded only {models_loaded - 1} out of {len(onnx_file_list)} models "
+                        f"Loaded only {models_loaded - 1} out of {total_num_models} models "
                         f"as memory consumption has reached {memory_limit_percentage}% of "
                         "system memory. Preventing further loading of models."
                     )
@@ -237,15 +266,13 @@ class MultiModelSelectionPage(QWidget):
                     break
                 else:
                     self.ui.warningLabel.hide()
-                serialized_models_paths[model.SerializeToString()].append(filepath)
+
             except DecodeError as error:
                 print(f"Error decoding model {filepath}: {error}")
 
         progress.close()
 
-        progress = ProgressDialog(
-            "Processing ONNX Models", len(serialized_models_paths), self
-        )
+        progress = ProgressDialog("Processing Models", total_num_models, self)
 
         num_duplicates = 0
         self.item_model.clear()
@@ -269,6 +296,12 @@ class MultiModelSelectionPage(QWidget):
                 item.setCheckState(Qt.CheckState.Checked)
                 self.item_model.appendRow(item)
 
+        for path in report_file_list:
+            item = QStandardItem(path)
+            item.setCheckable(True)
+            item.setCheckState(Qt.CheckState.Checked)
+            self.item_model.appendRow(item)
+
         progress.close()
 
         if num_duplicates:
@@ -284,7 +317,7 @@ class MultiModelSelectionPage(QWidget):
         self.update_num_selected_label()
 
         self.update_message_label(
-            f"Found a total of {len(onnx_file_list)} ONNX files. "
+            f"Found a total of {total_num_models} model files. "
             "Right click a model below "
             "to open it up in the model summary view."
         )

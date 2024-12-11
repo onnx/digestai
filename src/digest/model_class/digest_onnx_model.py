@@ -1,7 +1,7 @@
 # Copyright(C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
 import os
-from typing import List, Dict, Optional, Tuple, Union, cast
+from typing import List, Dict, Optional, Tuple, cast
 from datetime import datetime
 from collections import OrderedDict
 import yaml
@@ -11,7 +11,6 @@ from prettytable import PrettyTable
 from digest.model_class.digest_model import (
     DigestModel,
     SupportedModelTypes,
-    NodeTypeCounts,
     NodeInfo,
     TensorData,
     TensorInfo,
@@ -27,7 +26,7 @@ class DigestOnnxModel(DigestModel):
         model_name: str = "",
         save_proto: bool = True,
     ) -> None:
-        super().__init__(onnx_filepath, model_name)
+        super().__init__(onnx_filepath, model_name, SupportedModelTypes.ONNX)
 
         self.model_type = SupportedModelTypes.ONNX
 
@@ -185,11 +184,11 @@ class DigestOnnxModel(DigestModel):
 
         # Initialze to zero so we can accumulate. Set to None during the
         # model FLOPs calculation if it errors out.
-        self.model_flops = 0
+        self.flops = 0
 
         # Check to see if the model inputs have any dynamic shapes
         if onnx_utils.get_dynamic_input_dims(onnx_model):
-            self.model_flops = None
+            self.flops = None
 
         try:
             onnx_model, _ = onnx_utils.optimize_onnx_model(onnx_model)
@@ -199,7 +198,7 @@ class DigestOnnxModel(DigestModel):
             )
         except Exception as e:  # pylint: disable=broad-except
             print(f"ONNX utils: {str(e)}")
-            self.model_flops = None
+            self.flops = None
 
         # If the ONNX model contains one of the following unsupported ops, then this
         # function will return None since the FLOP total is expected to be incorrect
@@ -250,7 +249,7 @@ class DigestOnnxModel(DigestModel):
                     if all(isinstance(dim, int) for dim in input_tensor.shape):
                         input_parameters = int(np.prod(np.array(input_tensor.shape)))
                         node_info.parameters += input_parameters
-                        self.model_parameters += input_parameters
+                        self.parameters += input_parameters
                         self.node_type_parameters[node.op_type] = (
                             self.node_type_parameters.get(node.op_type, 0)
                             + input_parameters
@@ -267,7 +266,7 @@ class DigestOnnxModel(DigestModel):
             self.node_data[node.name] = node_info
 
             if node.op_type in unsupported_ops:
-                self.model_flops = None
+                self.flops = None
                 node_info.flops = None
 
             try:
@@ -288,7 +287,7 @@ class DigestOnnxModel(DigestModel):
                         isinstance(dim, int) for dim in input_a
                     ) or not isinstance(input_b[-1], int):
                         node_info.flops = None
-                        self.model_flops = None
+                        self.flops = None
                         continue
 
                     node_info.flops = int(
@@ -307,7 +306,7 @@ class DigestOnnxModel(DigestModel):
                         isinstance(dim, int) for dim in input_b
                     ):
                         node_info.flops = None
-                        self.model_flops = None
+                        self.flops = None
                         continue
 
                     node_info.flops = int(
@@ -325,7 +324,7 @@ class DigestOnnxModel(DigestModel):
                         isinstance(dim, int) for dim in w_shape
                     ):
                         node_info.flops = None
-                        self.model_flops = None
+                        self.flops = None
                         continue
 
                     mm_dims = [
@@ -371,7 +370,7 @@ class DigestOnnxModel(DigestModel):
 
                     if not all(isinstance(dim, int) for dim in x_shape):
                         node_info.flops = None
-                        self.model_flops = None
+                        self.flops = None
                         continue
 
                     x_shape_ints = cast(List[int], x_shape)
@@ -458,7 +457,7 @@ class DigestOnnxModel(DigestModel):
 
                     if not all(isinstance(dim, int) for dim in x_shape):
                         node_info.flops = None
-                        self.model_flops = None
+                        self.flops = None
                         continue
 
                     x_shape_ints = cast(List[int], x_shape)
@@ -498,12 +497,12 @@ class DigestOnnxModel(DigestModel):
             except IndexError as err:
                 print(f"Error parsing node {node.name}: {err}")
                 node_info.flops = None
-                self.model_flops = None
+                self.flops = None
                 continue
 
             # Update the model level flops count
-            if node_info.flops is not None and self.model_flops is not None:
-                self.model_flops += node_info.flops
+            if node_info.flops is not None and self.flops is not None:
+                self.flops += node_info.flops
 
                 # Update the node type flops count
                 self.node_type_flops[node.op_type] = (
@@ -523,7 +522,8 @@ class DigestOnnxModel(DigestModel):
 
         yaml_data = {
             "report_date": report_date,
-            "onnx_file": self.filepath,
+            "model_type": self.model_type.value,
+            "model_file": self.filepath,
             "model_name": self.model_name,
             "model_version": self.model_version,
             "graph_name": self.graph_name,
@@ -533,8 +533,8 @@ class DigestOnnxModel(DigestModel):
             "opset": self.opset,
             "import_list": dict(self.imports),
             "graph_nodes": sum(self.node_type_counts.values()),
-            "model_parameters": self.model_parameters,
-            "model_flops": self.model_flops,
+            "parameters": self.parameters,
+            "flops": self.flops,
             "node_type_counts": dict(self.node_type_counts),
             "node_type_flops": dict(self.node_type_flops),
             "node_type_parameters": self.node_type_parameters,
@@ -555,6 +555,7 @@ class DigestOnnxModel(DigestModel):
 
         with open(filepath, "w", encoding="utf-8") as f_p:
             f_p.write(f"Report created on {report_date}\n")
+            f_p.write(f"Model type: {self.model_type.name}\n")
             if self.filepath:
                 f_p.write(f"ONNX file: {self.filepath}\n")
             f_p.write(f"Name of the model: {self.model_name}\n")
@@ -569,9 +570,9 @@ class DigestOnnxModel(DigestModel):
 
             f_p.write("\n")
             f_p.write(f"Total graph nodes: {sum(self.node_type_counts.values())}\n")
-            f_p.write(f"Number of parameters: {self.model_parameters}\n")
-            if self.model_flops:
-                f_p.write(f"Number of FLOPs: {self.model_flops}\n")
+            f_p.write(f"Number of parameters: {self.parameters}\n")
+            if self.flops:
+                f_p.write(f"Number of FLOPs: {self.flops}\n")
                 f_p.write("\n")
 
                 table_op_intensity = PrettyTable()
@@ -582,7 +583,7 @@ class DigestOnnxModel(DigestModel):
                             [
                                 op_type,
                                 count,
-                                100.0 * float(count) / float(self.model_flops),
+                                100.0 * float(count) / float(self.flops),
                             ]
                         )
 
@@ -647,8 +648,3 @@ class DigestOnnxModel(DigestModel):
             f_p.write("Output Tensor(s) Information:\n")
             f_p.write(output_table.get_string())
             f_p.write("\n\n")
-
-    def get_node_type_counts(self) -> Union[NodeTypeCounts, None]:
-        if not self.node_type_counts and self.model_proto:
-            self.node_type_counts = onnx_utils.get_node_type_counts(self.model_proto)
-        return self.node_type_counts if self.node_type_counts else None

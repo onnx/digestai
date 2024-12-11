@@ -3,6 +3,7 @@
 
 import os
 import sys
+import shutil
 import argparse
 from datetime import datetime
 from typing import Dict, Tuple, Optional, Union
@@ -33,7 +34,7 @@ from PySide6.QtWidgets import (
     QMenu,
 )
 from PySide6.QtGui import QDragEnterEvent, QDropEvent, QPixmap, QMovie, QIcon, QFont
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSize
 
 from digest.dialog import StatusDialog, InfoDialog, WarnDialog, ProgressDialog
 from digest.thread import StatsThread, SimilarityThread
@@ -309,9 +310,9 @@ class DigestApp(QMainWindow):
         digest_model: DigestModel,
         unique_id: str,
     ):
-        self.digest_models[unique_id].model_flops = digest_model.model_flops
+        self.digest_models[unique_id].flops = digest_model.flops
         self.digest_models[unique_id].node_type_flops = digest_model.node_type_flops
-        self.digest_models[unique_id].model_parameters = digest_model.model_parameters
+        self.digest_models[unique_id].parameters = digest_model.parameters
         self.digest_models[unique_id].node_type_parameters = (
             digest_model.node_type_parameters
         )
@@ -326,10 +327,10 @@ class DigestApp(QMainWindow):
                 isinstance(widget, modelSummary)
                 and widget.digest_model.unique_id == unique_id
             ):
-                if digest_model.model_flops is None:
+                if digest_model.flops is None:
                     flops_str = "--"
                 else:
-                    flops_str = format(digest_model.model_flops, ",")
+                    flops_str = format(digest_model.flops, ",")
 
                     # Set up the pie chart
                     pie_chart_labels, pie_chart_data = zip(
@@ -390,10 +391,20 @@ class DigestApp(QMainWindow):
                 break
 
         if completed_successfully and isinstance(widget, modelSummary) and png_filepath:
-            widget_width = widget.ui.similarityWidget.width()
-            widget.ui.similarityImg.setPixmap(
-                QPixmap(png_filepath).scaledToWidth(widget_width)
+            widget.load_gif.stop()
+            widget.ui.similarityImg.clear()
+            widget_width = widget.ui.similarityImg.width()
+
+            pixmap = QPixmap(png_filepath)
+            aspect_ratio = pixmap.width() / pixmap.height()
+            target_height = int(widget_width / aspect_ratio)
+            pixmap_scaled = pixmap.scaled(
+                QSize(widget_width, target_height),
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
             )
+
+            widget.ui.similarityImg.setPixmap(pixmap_scaled)
             widget.ui.similarityImg.setText("")
             widget.ui.similarityImg.setCursor(Qt.CursorShape.PointingHandCursor)
 
@@ -429,7 +440,8 @@ class DigestApp(QMainWindow):
             widget.ui.similarityCorrelation.setText(text)
         elif isinstance(widget, modelSummary):
             # Remove animation and set text to failing message
-            widget.ui.similarityImg.setMovie(QMovie())
+            widget.load_gif.stop()
+            widget.ui.similarityImg.clear()
             widget.ui.similarityImg.setText("Failed to perform similarity analysis")
         else:
             print(
@@ -666,10 +678,6 @@ class DigestApp(QMainWindow):
             self.ui.singleModelWidget.show()
             progress.step()
 
-            movie = QMovie(":/assets/gifs/load.gif")
-            model_summary.ui.similarityImg.setMovie(movie)
-            movie.start()
-
             # Start similarity Analysis
             # Note: Should only be started after the model tab has been created
             png_tmp_path = os.path.join(self.temp_dir.name, model_id)
@@ -716,6 +724,16 @@ class DigestApp(QMainWindow):
 
             digest_model = DigestReportModel(filepath)
 
+            if not digest_model.is_valid:
+                progress.close()
+                invalid_yaml_dialog = StatusDialog(
+                    title="Warning",
+                    status_message=f"YAML file {filepath} is not a valid digest report",
+                )
+                invalid_yaml_dialog.show()
+
+                return
+
             model_id = digest_model.unique_id
 
             # There is no sense in offering to save the report
@@ -739,9 +757,7 @@ class DigestApp(QMainWindow):
             model_summary.ui.modelFilename.setText(filepath)
             model_summary.ui.generatedDate.setText(datetime.now().strftime("%B %d, %Y"))
 
-            model_summary.ui.parameters.setText(
-                format(digest_model.model_parameters, ",")
-            )
+            model_summary.ui.parameters.setText(format(digest_model.parameters, ","))
 
             node_type_counts = digest_model.node_type_counts
             if len(node_type_counts) < 15:
@@ -751,7 +767,6 @@ class DigestApp(QMainWindow):
 
             model_summary.ui.opHistogramChart.bar_spacing = bar_spacing
             model_summary.ui.opHistogramChart.set_data(node_type_counts)
-
             model_summary.ui.nodes.setText(str(sum(node_type_counts.values())))
 
             progress.step()
@@ -962,13 +977,13 @@ class DigestApp(QMainWindow):
         )
         digest_model.save_node_type_counts_csv_report(node_type_filepath)
 
-        # Save the similarity image
-        similarity_png = self.model_similarity_report[
+        # Save (copy) the similarity image
+        png_file_path = self.model_similarity_thread[
             digest_model.unique_id
-        ].enlarged_image_label.grab()
-        similarity_png.save(
-            os.path.join(save_directory, f"{model_name}_heatmap.png"), "PNG"
-        )
+        ].png_filepath
+        png_save_path = os.path.join(save_directory, f"{model_name}_heatmap.png")
+        if png_file_path and os.path.exists(png_file_path):
+            shutil.copy(png_file_path, png_save_path)
 
         # Save the text report
         txt_report_filepath = os.path.join(save_directory, f"{model_name}_report.txt")

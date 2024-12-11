@@ -94,15 +94,15 @@ class NodeData(OrderedDict[str, NodeInfo]):
 
 
 class DigestModel(ABC):
-    def __init__(self, filepath: str, model_name: str):
+    def __init__(self, filepath: str, model_name: str, model_type: SupportedModelTypes):
         # Public members exposed to the API
         self.unique_id: str = str(uuid4())
         self.filepath: Optional[str] = filepath
         self.model_name: str = model_name
-        self.model_type: Optional[SupportedModelTypes] = None
+        self.model_type: SupportedModelTypes = model_type
         self.node_type_counts: NodeTypeCounts = NodeTypeCounts()
-        self.model_flops: Optional[int] = None
-        self.model_parameters: int = 0
+        self.flops: Optional[int] = None
+        self.parameters: int = 0
         self.node_type_flops: Dict[str, int] = {}
         self.node_type_parameters: Dict[str, int] = {}
         self.node_data = NodeData()
@@ -118,7 +118,7 @@ class DigestModel(ABC):
         return tensor_shape_counter
 
     @abstractmethod
-    def parse_model_nodes(self, *args) -> None:
+    def parse_model_nodes(self, *args, **kwargs) -> None:
         pass
 
     @abstractmethod

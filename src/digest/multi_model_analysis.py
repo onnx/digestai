@@ -52,11 +52,18 @@ class MultiModelAnalysis(QWidget):
         self.global_node_shape_counter: NodeShapeCounts = defaultdict(Counter)
 
         # Holds the data for all models statistics
-        self.global_model_data: Dict[str, Dict[str, Union[int, None]]] = {}
+        self.global_model_data: Dict[str, Dict[str, Union[int, str, None]]] = {}
 
         progress = ProgressDialog("", len(model_list), self)
 
-        header_labels = ["Model", "Opset", "Total Nodes", "Parameters", "FLOPs"]
+        header_labels = [
+            "Model Name",
+            "Model Type",
+            "Opset",
+            "Total Nodes",
+            "Parameters",
+            "FLOPs",
+        ]
         self.ui.dataTable.setRowCount(len(model_list))
         self.ui.dataTable.setColumnCount(len(header_labels))
         self.ui.dataTable.setHorizontalHeaderLabels(header_labels)
@@ -64,23 +71,26 @@ class MultiModelAnalysis(QWidget):
 
         for row, model in enumerate(model_list):
 
-            if not isinstance(model, DigestOnnxModel):
-                continue
-
             item = QTableWidgetItem(str(model.model_name))
             self.ui.dataTable.setItem(row, 0, item)
 
-            item = QTableWidgetItem(str(model.opset))
+            item = QTableWidgetItem(str(model.model_type.name))
             self.ui.dataTable.setItem(row, 1, item)
 
-            item = QTableWidgetItem(str(len(model.node_data)))
+            if isinstance(model, DigestOnnxModel):
+                item = QTableWidgetItem(str(model.opset))
+            elif isinstance(model, DigestReportModel):
+                item = QTableWidgetItem(str(model.model_data.get("opset", "NA")))
             self.ui.dataTable.setItem(row, 2, item)
 
-            item = QTableWidgetItem(str(model.model_parameters))
+            item = QTableWidgetItem(str(len(model.node_data)))
             self.ui.dataTable.setItem(row, 3, item)
 
-            item = QTableWidgetItem(str(model.model_flops))
+            item = QTableWidgetItem(str(model.parameters))
             self.ui.dataTable.setItem(row, 4, item)
+
+            item = QTableWidgetItem(str(model.flops))
+            self.ui.dataTable.setItem(row, 5, item)
 
         self.ui.dataTable.resizeColumnsToContents()
         self.ui.dataTable.resizeRowsToContents()
@@ -93,41 +103,59 @@ class MultiModelAnalysis(QWidget):
             if digest_model.model_name is None:
                 digest_model.model_name = f"model_{i}"
 
-            if not isinstance(digest_model, DigestOnnxModel):
-                continue
-
-            if digest_model.model_proto:
-                dynamic_input_dims = onnx_utils.get_dynamic_input_dims(
-                    digest_model.model_proto
-                )
-                if dynamic_input_dims:
-                    print(
-                        "Found the following non-static input dims in your model. "
-                        "It is recommended to make all dims static before generating reports."
+            if isinstance(digest_model, DigestOnnxModel):
+                opset = digest_model.opset
+                if digest_model.model_proto:
+                    dynamic_input_dims = onnx_utils.get_dynamic_input_dims(
+                        digest_model.model_proto
                     )
-                    for dynamic_shape in dynamic_input_dims:
-                        print(f"dim: {dynamic_shape}")
+                    if dynamic_input_dims:
+                        print(
+                            "Found the following non-static input dims in your model. "
+                            "It is recommended to make all dims static before generating reports."
+                        )
+                        for dynamic_shape in dynamic_input_dims:
+                            print(f"dim: {dynamic_shape}")
+
+            elif isinstance(digest_model, DigestReportModel):
+                opset = digest_model.model_data.get("opset", "")
 
             # Update the global model dictionary
-            if digest_model.model_name in self.global_model_data:
+            if digest_model.unique_id in self.global_model_data:
                 print(
-                    f"Warning! {digest_model.model_name} has already been processed, "
+                    f"Warning! {digest_model.model_name} with id "
+                    f"{digest_model.unique_id} has already been processed, "
                     "skipping the duplicate model."
                 )
+                continue
 
-            self.global_model_data[digest_model.model_name] = {
-                "opset": digest_model.opset,
-                "parameters": digest_model.model_parameters,
-                "flops": digest_model.model_flops,
+            self.global_model_data[digest_model.unique_id] = {
+                "model_name": digest_model.model_name,
+                "model_type": digest_model.model_type.name,
+                "opset": opset,
+                "parameters": digest_model.parameters,
+                "flops": digest_model.flops,
             }
 
-            node_type_counter[digest_model.model_name] = (
-                digest_model.get_node_type_counts()
+            # Here we are creating a name that is a combination of the model name
+            # and the model type.
+            node_type_counter_key = (
+                f"{digest_model.model_name}-{digest_model.model_type.value}"
             )
+
+            if node_type_counter_key in node_type_counter:
+                print(
+                    f"Warning! {digest_model.model_name} with model type "
+                    f"{digest_model.model_type.value} has already been added to "
+                    "to the stacked histogram, skipping."
+                )
+                continue
+
+            node_type_counter[node_type_counter_key] = digest_model.node_type_counts
 
             # Update global data structure for node type counter
             self.global_node_type_counter.update(
-                node_type_counter[digest_model.model_name]
+                node_type_counter[node_type_counter_key]
             )
 
             node_shape_counts = digest_model.get_node_shape_counts()
@@ -258,10 +286,18 @@ class MultiModelAnalysis(QWidget):
                 ) as csvfile:
                     writer = csv.writer(csvfile)
                     rows = [
-                        [model, data["opset"], data["parameters"], data["flops"]]
-                        for model, data in self.global_model_data.items()
+                        [
+                            data["model_name"],
+                            data["model_type"],
+                            data["opset"],
+                            data["parameters"],
+                            data["flops"],
+                        ]
+                        for _, data in self.global_model_data.items()
                     ]
-                    writer.writerow(["Model", "Opset", "Parameters", "FLOPs"])
+                    writer.writerow(
+                        ["Model Name", "Model Type", "Opset", "Parameters", "FLOPs"]
+                    )
                     writer.writerows(rows)
 
         if save_individual_reports or save_multi_reports:

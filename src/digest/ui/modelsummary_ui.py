@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'modelsummary.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.8.0
+## Created by: Qt User Interface Compiler version 6.8.1
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -29,7 +29,7 @@ class Ui_modelSummary(object):
     def setupUi(self, modelSummary):
         if not modelSummary.objectName():
             modelSummary.setObjectName(u"modelSummary")
-        modelSummary.resize(980, 687)
+        modelSummary.resize(1061, 837)
         sizePolicy = QSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -115,7 +115,7 @@ class Ui_modelSummary(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 991, 1453))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, -558, 991, 1443))
         self.scrollAreaWidgetContents.setStyleSheet(u"background-color: black;")
         self.verticalLayout_20 = QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_20.setObjectName(u"verticalLayout_20")
@@ -178,7 +178,7 @@ class Ui_modelSummary(object):
         self.opsetLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.opsetLabel.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
 
-        self.verticalLayout_5.addWidget(self.opsetLabel, 0, Qt.AlignmentFlag.AlignHCenter)
+        self.verticalLayout_5.addWidget(self.opsetLabel)
 
         self.opsetVersion = QLabel(self.opsetFrame)
         self.opsetVersion.setObjectName(u"opsetVersion")
@@ -192,7 +192,7 @@ class Ui_modelSummary(object):
         self.opsetVersion.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.opsetVersion.setTextInteractionFlags(Qt.TextInteractionFlag.LinksAccessibleByMouse|Qt.TextInteractionFlag.TextSelectableByKeyboard|Qt.TextInteractionFlag.TextSelectableByMouse)
 
-        self.verticalLayout_5.addWidget(self.opsetVersion, 0, Qt.AlignmentFlag.AlignHCenter)
+        self.verticalLayout_5.addWidget(self.opsetVersion)
 
 
         self.horizontalLayout_2.addWidget(self.opsetFrame)
@@ -397,18 +397,24 @@ class Ui_modelSummary(object):
         self.secondRowChartsLayout.setContentsMargins(-1, 20, -1, -1)
         self.similarityWidget = QWidget(self.scrollAreaWidgetContents)
         self.similarityWidget.setObjectName(u"similarityWidget")
-        sizePolicy.setHeightForWidth(self.similarityWidget.sizePolicy().hasHeightForWidth())
-        self.similarityWidget.setSizePolicy(sizePolicy)
+        sizePolicy6.setHeightForWidth(self.similarityWidget.sizePolicy().hasHeightForWidth())
+        self.similarityWidget.setSizePolicy(sizePolicy6)
+        self.similarityWidget.setMinimumSize(QSize(300, 500))
         self.placeholderWidget = QVBoxLayout(self.similarityWidget)
         self.placeholderWidget.setObjectName(u"placeholderWidget")
         self.similarityImg = ClickableLabel(self.similarityWidget)
         self.similarityImg.setObjectName(u"similarityImg")
-        sizePolicy.setHeightForWidth(self.similarityImg.sizePolicy().hasHeightForWidth())
-        self.similarityImg.setSizePolicy(sizePolicy)
+        sizePolicy7 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        sizePolicy7.setHorizontalStretch(0)
+        sizePolicy7.setVerticalStretch(0)
+        sizePolicy7.setHeightForWidth(self.similarityImg.sizePolicy().hasHeightForWidth())
+        self.similarityImg.setSizePolicy(sizePolicy7)
+        self.similarityImg.setMinimumSize(QSize(0, 0))
         self.similarityImg.setMaximumSize(QSize(16777215, 16777215))
+        self.similarityImg.setScaledContents(False)
         self.similarityImg.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.placeholderWidget.addWidget(self.similarityImg, 0, Qt.AlignmentFlag.AlignHCenter)
+        self.placeholderWidget.addWidget(self.similarityImg)
 
         self.similarityCorrelationStatic = QLabel(self.similarityWidget)
         self.similarityCorrelationStatic.setObjectName(u"similarityCorrelationStatic")
@@ -446,11 +452,8 @@ class Ui_modelSummary(object):
 
         self.flopsPieChart = PieChartWidget(self.scrollAreaWidgetContents)
         self.flopsPieChart.setObjectName(u"flopsPieChart")
-        sizePolicy7 = QSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Preferred)
-        sizePolicy7.setHorizontalStretch(0)
-        sizePolicy7.setVerticalStretch(0)
-        sizePolicy7.setHeightForWidth(self.flopsPieChart.sizePolicy().hasHeightForWidth())
-        self.flopsPieChart.setSizePolicy(sizePolicy7)
+        sizePolicy6.setHeightForWidth(self.flopsPieChart.sizePolicy().hasHeightForWidth())
+        self.flopsPieChart.setSizePolicy(sizePolicy6)
         self.flopsPieChart.setMinimumSize(QSize(300, 500))
 
         self.secondRowChartsLayout.addWidget(self.flopsPieChart)
@@ -474,7 +477,7 @@ class Ui_modelSummary(object):
 "    background: transparent;\n"
 "}")
 
-        self.inputsLayout.addWidget(self.inputsLabel, 0, Qt.AlignmentFlag.AlignVCenter)
+        self.inputsLayout.addWidget(self.inputsLabel)
 
         self.inputsTable = QTableWidget(self.scrollAreaWidgetContents)
         if (self.inputsTable.columnCount() < 4):
@@ -543,7 +546,7 @@ class Ui_modelSummary(object):
         self.inputsTable.verticalHeader().setVisible(False)
         self.inputsTable.verticalHeader().setHighlightSections(True)
 
-        self.inputsLayout.addWidget(self.inputsTable, 0, Qt.AlignmentFlag.AlignVCenter)
+        self.inputsLayout.addWidget(self.inputsTable)
 
 
         self.thirdRowInputsLayout.addLayout(self.inputsLayout)
@@ -580,7 +583,7 @@ class Ui_modelSummary(object):
         self.freezeButton.setIcon(icon)
         self.freezeButton.setIconSize(QSize(32, 32))
 
-        self.thirdRowInputsLayout.addWidget(self.freezeButton, 0, Qt.AlignmentFlag.AlignTop)
+        self.thirdRowInputsLayout.addWidget(self.freezeButton)
 
         self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
@@ -770,7 +773,7 @@ class Ui_modelSummary(object):
         self.modelProtoTable.verticalHeader().setMinimumSectionSize(20)
         self.modelProtoTable.verticalHeader().setDefaultSectionSize(20)
 
-        self.verticalLayout_3.addWidget(self.modelProtoTable, 0, Qt.AlignmentFlag.AlignRight)
+        self.verticalLayout_3.addWidget(self.modelProtoTable)
 
         self.importsLabel = QLabel(self.sidePaneFrame)
         self.importsLabel.setObjectName(u"importsLabel")
