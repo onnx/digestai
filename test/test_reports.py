@@ -132,7 +132,7 @@ class TestDigestReports(unittest.TestCase):
                     self.compare_yaml_files(
                         TEST_SUMMARY_YAML_REPORT,
                         yaml_report_filepath,
-                        skip_keys=["report_date", "onnx_file"],
+                        skip_keys=["report_date", "model_file"],
                     )
                 )
 
