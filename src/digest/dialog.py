@@ -125,13 +125,23 @@ class WarnDialog(QDialog):
 
     def __init__(self, warning_message: str, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Warning Message")
+
         self.setWindowIcon(QIcon(":/assets/images/digest_logo_500.jpg"))
+
+        self.setWindowTitle("Warning Message")
+        self.setWindowFlags(Qt.WindowType.Dialog)
         self.setMinimumWidth(300)
+
+        self.setWindowModality(Qt.WindowModality.WindowModal)
 
         layout = QVBoxLayout()
 
         # Application Version
-        layout.addWidget(QLabel("<b>Something went wrong</b>"))
+        layout.addWidget(QLabel("<b>Warning</b>"))
         layout.addWidget(QLabel(warning_message))
+
+        ok_button = QPushButton("OK")
+        ok_button.clicked.connect(self.accept)  # Close dialog when clicked
+        layout.addWidget(ok_button)
+
         self.setLayout(layout)
