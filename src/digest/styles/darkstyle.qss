@@ -192,3 +192,22 @@ QTreeView::item:selected:active {
 QTreeView::item:selected:!active {
     background-color: #949494;
 }
+
+QRadioButton {
+  spacing: 5px; /* Add spacing between the indicator and text */
+  color: white; /* Set text color to white */
+}
+
+QRadioButton::indicator {
+  /*width: 15px;
+  height: 15px;*/
+  border-radius: 7px;  /* Make the indicator circular */
+}
+
+QRadioButton::indicator:unchecked {
+  border: 2px solid gray; /* Add a gray border when unchecked */
+}
+
+QRadioButton::indicator:checked {
+  background-color: lightblue; /* Fill with light blue when checked */
+}

@@ -157,7 +157,6 @@ class StackedHistogramWidget(QWidget):
         self.bar_spacing = 25
 
     def set_data(self, data: OrderedDict, model_name, y_max, title="", set_ticks=False):
-
         title_color = "rgb(0,0,0)" if set_ticks else "rgb(200,200,200)"
         self.plot_widget.setLabel(
             "left",
@@ -173,7 +172,8 @@ class StackedHistogramWidget(QWidget):
         x_positions = list(range(len(op_count)))
         total_count = sum(op_count)
         width = 0.6
-        self.plot_widget.setFixedWidth(len(op_names) * self.bar_spacing)
+        self.plot_widget.setFixedWidth(500)
+
         for count, x_pos, tick in zip(op_count, x_positions, op_names):
             x0 = x_pos - width / 2
             y0 = 0

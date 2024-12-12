@@ -1,12 +1,14 @@
 # Copyright(C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
 import os
+from datetime import datetime
 import csv
 from typing import List, Dict, Union
 from collections import Counter, defaultdict, OrderedDict
 
 # pylint: disable=no-name-in-module
 from PySide6.QtWidgets import QWidget, QTableWidgetItem, QFileDialog
+from PySide6.QtCore import Qt
 from digest.dialog import ProgressDialog, StatusDialog
 from digest.ui.multimodelanalysis_ui import Ui_multiModelAnalysis
 from digest.histogramchartwidget import StackedHistogramWidget
@@ -41,6 +43,9 @@ class MultiModelAnalysis(QWidget):
 
         self.ui.individualCheckBox.stateChanged.connect(self.check_box_changed)
         self.ui.multiCheckBox.stateChanged.connect(self.check_box_changed)
+
+        # For some reason setting alignments in designer lead to bugs in *ui.py files
+        self.ui.opHistogramChart.layout().setAlignment(Qt.AlignmentFlag.AlignTop)
 
         if not model_list:
             return
@@ -80,7 +85,8 @@ class MultiModelAnalysis(QWidget):
             if isinstance(model, DigestOnnxModel):
                 item = QTableWidgetItem(str(model.opset))
             elif isinstance(model, DigestReportModel):
-                item = QTableWidgetItem(str(model.model_data.get("opset", "NA")))
+                item = QTableWidgetItem(str(model.model_data.get("opset", "")))
+
             self.ui.dataTable.setItem(row, 2, item)
 
             item = QTableWidgetItem(str(len(model.node_data)))
@@ -193,12 +199,13 @@ class MultiModelAnalysis(QWidget):
                 set_ticks=False,
             )
             frame_layout = self.ui.stackedHistogramFrame.layout()
-            frame_layout.addWidget(stacked_histogram_widget)
+            if frame_layout:
+                frame_layout.addWidget(stacked_histogram_widget)
 
         # Add a "ghost" histogram to allow us to set the x axis label vertically
         model_name = list(node_type_counter.keys())[0]
         stacked_histogram_widget = StackedHistogramWidget()
-        ordered_dict = {key: 1 for key in top_ops}
+        ordered_dict = OrderedDict({key: 1 for key in top_ops})
         stacked_histogram_widget.set_data(
             ordered_dict,
             model_name="_",
@@ -206,18 +213,39 @@ class MultiModelAnalysis(QWidget):
             set_ticks=True,
         )
         frame_layout = self.ui.stackedHistogramFrame.layout()
-        frame_layout.addWidget(stacked_histogram_widget)
+        if frame_layout:
+            frame_layout.addWidget(stacked_histogram_widget)
 
         self.model_list = model_list
 
     def save_reports(self):
-        # Model summary text report
-        save_directory = QFileDialog(self).getExistingDirectory(
+        """This function saves all available reports for the models that are opened
+        in the multi-model analysis page."""
+
+        base_directory = QFileDialog(self).getExistingDirectory(
             self, "Select Directory"
         )
 
-        if not save_directory:
-            return
+        # Check if the directory exists and is writable
+        if not os.path.exists(base_directory) or not os.access(base_directory, os.W_OK):
+            bad_ext_dialog = StatusDialog(
+                f"The directory {base_directory} is not valid or writable.",
+                parent=self,
+            )
+            bad_ext_dialog.show()
+
+        # Append a subdirectory to the save_directory so that all reports are co-located
+        name_id = datetime.now().strftime("%Y%m%d%H%M%S")
+        sub_directory = f"multi_model_reports_{name_id}"
+        save_directory = os.path.join(base_directory, sub_directory)
+        try:
+            os.makedirs(save_directory)
+        except OSError as os_err:
+            bad_ext_dialog = StatusDialog(
+                f"Failed to create {save_directory} with error {os_err}",
+                parent=self,
+            )
+            bad_ext_dialog.show()
 
         save_individual_reports = self.ui.individualCheckBox.isChecked()
         save_multi_reports = self.ui.multiCheckBox.isChecked()

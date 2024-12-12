@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1061</width>
+    <width>1138</width>
     <height>837</height>
    </rect>
   </property>
@@ -153,10 +153,16 @@ border-top-right-radius: 10px;</string>
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>-558</y>
+          <y>-776</y>
           <width>991</width>
           <height>1443</height>
          </rect>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="MinimumExpanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
         </property>
         <property name="styleSheet">
          <string notr="true">background-color: black;</string>
@@ -868,6 +874,9 @@ QFrame:hover {
          </item>
          <item>
           <layout class="QHBoxLayout" name="thirdRowInputsLayout">
+           <property name="spacing">
+            <number>6</number>
+           </property>
            <property name="leftMargin">
             <number>20</number>
            </property>
@@ -878,6 +887,12 @@ QFrame:hover {
             <layout class="QVBoxLayout" name="inputsLayout">
              <item>
               <widget class="QLabel" name="inputsLabel">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
                <property name="styleSheet">
                 <string notr="true">QLabel {
     font-size: 18px;
@@ -893,8 +908,8 @@ QFrame:hover {
              <item>
               <widget class="QTableWidget" name="inputsTable">
                <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-                 <horstretch>0</horstretch>
+                <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
+                 <horstretch>1</horstretch>
                  <verstretch>0</verstretch>
                 </sizepolicy>
                </property>
@@ -998,6 +1013,18 @@ QScrollBar::handle:vertical {
                <verstretch>0</verstretch>
               </sizepolicy>
              </property>
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>16777215</height>
+              </size>
+             </property>
              <property name="cursor">
               <cursorShape>PointingHandCursor</cursorShape>
              </property>
@@ -1082,7 +1109,7 @@ QPushButton:pressed {
              <item>
               <widget class="QTableWidget" name="outputsTable">
                <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+                <sizepolicy hsizetype="MinimumExpanding" vsizetype="Expanding">
                  <horstretch>0</horstretch>
                  <verstretch>0</verstretch>
                 </sizepolicy>

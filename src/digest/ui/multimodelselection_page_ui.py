@@ -135,22 +135,32 @@ class Ui_MultiModelSelection(object):
 
         self.horizontalLayout_3.addWidget(self.radioReports)
 
-        self.numSelectedLabel = QLabel(MultiModelSelection)
-        self.numSelectedLabel.setObjectName(u"numSelectedLabel")
-        self.numSelectedLabel.setStyleSheet(u"")
-        self.numSelectedLabel.setWordWrap(True)
-
-        self.horizontalLayout_3.addWidget(self.numSelectedLabel)
-
         self.duplicateLabel = QLabel(MultiModelSelection)
         self.duplicateLabel.setObjectName(u"duplicateLabel")
+        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        sizePolicy2.setHorizontalStretch(0)
+        sizePolicy2.setVerticalStretch(0)
+        sizePolicy2.setHeightForWidth(self.duplicateLabel.sizePolicy().hasHeightForWidth())
+        self.duplicateLabel.setSizePolicy(sizePolicy2)
+        self.duplicateLabel.setMinimumSize(QSize(550, 0))
         self.duplicateLabel.setStyleSheet(u"")
         self.duplicateLabel.setWordWrap(True)
 
         self.horizontalLayout_3.addWidget(self.duplicateLabel)
 
+        self.horizontalSpacer_2 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.horizontalLayout_3.addItem(self.horizontalSpacer_2)
+
 
         self.verticalLayout.addLayout(self.horizontalLayout_3)
+
+        self.numSelectedLabel = QLabel(MultiModelSelection)
+        self.numSelectedLabel.setObjectName(u"numSelectedLabel")
+        self.numSelectedLabel.setStyleSheet(u"")
+        self.numSelectedLabel.setWordWrap(True)
+
+        self.verticalLayout.addWidget(self.numSelectedLabel)
 
         self.columnsLayout = QHBoxLayout()
         self.columnsLayout.setObjectName(u"columnsLayout")
@@ -172,11 +182,11 @@ class Ui_MultiModelSelection(object):
         self.rightColumnLayout.setObjectName(u"rightColumnLayout")
         self.duplicateListWidget = QListWidget(MultiModelSelection)
         self.duplicateListWidget.setObjectName(u"duplicateListWidget")
-        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        sizePolicy2.setHorizontalStretch(0)
-        sizePolicy2.setVerticalStretch(0)
-        sizePolicy2.setHeightForWidth(self.duplicateListWidget.sizePolicy().hasHeightForWidth())
-        self.duplicateListWidget.setSizePolicy(sizePolicy2)
+        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        sizePolicy3.setHorizontalStretch(0)
+        sizePolicy3.setVerticalStretch(0)
+        sizePolicy3.setHeightForWidth(self.duplicateListWidget.sizePolicy().hasHeightForWidth())
+        self.duplicateListWidget.setSizePolicy(sizePolicy3)
         self.duplicateListWidget.setStyleSheet(u"")
         self.duplicateListWidget.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.duplicateListWidget.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
@@ -209,7 +219,7 @@ class Ui_MultiModelSelection(object):
         self.radioAll.setText(QCoreApplication.translate("MultiModelSelection", u"All", None))
         self.radioONNX.setText(QCoreApplication.translate("MultiModelSelection", u"ONNX", None))
         self.radioReports.setText(QCoreApplication.translate("MultiModelSelection", u"Reports", None))
-        self.numSelectedLabel.setText(QCoreApplication.translate("MultiModelSelection", u"0 selected models", None))
         self.duplicateLabel.setText(QCoreApplication.translate("MultiModelSelection", u"The following models were found to be duplicates and have been deselected from the list on the left.", None))
+        self.numSelectedLabel.setText(QCoreApplication.translate("MultiModelSelection", u"0 selected models", None))
     # retranslateUi
 

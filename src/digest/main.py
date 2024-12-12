@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import Dict, Tuple, Optional, Union
 import tempfile
 from enum import IntEnum
+import pandas as pd
 import yaml
 
 # This is a temporary workaround since the Qt designer generated files
@@ -37,7 +38,7 @@ from PySide6.QtGui import QDragEnterEvent, QDropEvent, QPixmap, QMovie, QIcon, Q
 from PySide6.QtCore import Qt, QSize
 
 from digest.dialog import StatusDialog, InfoDialog, WarnDialog, ProgressDialog
-from digest.thread import StatsThread, SimilarityThread
+from digest.thread import StatsThread, SimilarityThread, post_process
 from digest.popup_window import PopupWindow
 from digest.huggingface_page import HuggingfacePage
 from digest.multi_model_selection_page import MultiModelSelectionPage
@@ -214,7 +215,7 @@ class DigestApp(QMainWindow):
 
         # Set up the HUGGINGFACE Page
         huggingface_page = HuggingfacePage()
-        huggingface_page.model_signal.connect(self.load_onnx)
+        huggingface_page.model_signal.connect(self.load_model)
         self.ui.stackedWidget.insertWidget(self.Page.HUGGINGFACE, huggingface_page)
 
         # Set up the multi model page and relevant button
@@ -222,7 +223,7 @@ class DigestApp(QMainWindow):
         self.ui.stackedWidget.insertWidget(
             self.Page.MULTIMODEL, self.multimodelselection_page
         )
-        self.multimodelselection_page.model_signal.connect(self.load_onnx)
+        self.multimodelselection_page.model_signal.connect(self.load_model)
 
         # Load model file if given as input to the executable
         if model_file:
@@ -285,25 +286,14 @@ class DigestApp(QMainWindow):
             self.ui.singleModelWidget.hide()
 
     def openFile(self):
-        filename, _ = QFileDialog.getOpenFileName(
+        file_name, _ = QFileDialog.getOpenFileName(
             self, "Open File", "", "ONNX and Report Files (*.onnx  *.yaml)"
         )
 
-        if not filename:
+        if not file_name:
             return
 
-        file_ext = os.path.splitext(filename)[-1]
-
-        if file_ext == ".onnx":
-            self.load_onnx(filename)
-        elif file_ext == ".yaml":
-            self.load_report(filename)
-        else:
-            bad_ext_dialog = StatusDialog(
-                f"Digest does not support files with the extension {file_ext}",
-                parent=self,
-            )
-            bad_ext_dialog.show()
+        self.load_model(file_name)
 
     def update_cards(
         self,
@@ -374,7 +364,8 @@ class DigestApp(QMainWindow):
         completed_successfully: bool,
         model_id: str,
         most_similar: str,
-        png_filepath: Union[str, None],
+        png_filepath: Optional[str] = None,
+        df_sorted: Optional[pd.DataFrame] = None,
     ):
         widget = None
         digest_model = None
@@ -390,9 +381,24 @@ class DigestApp(QMainWindow):
                 curr_index = index
                 break
 
-        if completed_successfully and isinstance(widget, modelSummary) and png_filepath:
+        # convert back to a List[str]
+        most_similar_list = most_similar.split(",")
+
+        if (
+            completed_successfully
+            and isinstance(widget, modelSummary)
+            and digest_model
+            and png_filepath
+        ):
+
+            if df_sorted is not None:
+                post_process(
+                    digest_model.model_name, most_similar_list, df_sorted, png_filepath
+                )
+
             widget.load_gif.stop()
             widget.ui.similarityImg.clear()
+            # We give the image a 10% haircut to fit it more aesthetically
             widget_width = widget.ui.similarityImg.width()
 
             pixmap = QPixmap(png_filepath)
@@ -411,30 +417,31 @@ class DigestApp(QMainWindow):
             # Show most correlated models
             widget.ui.similarityCorrelation.show()
             widget.ui.similarityCorrelationStatic.show()
+
+            most_similar_list = most_similar_list[1:4]
             if most_similar:
-                most_similar_models = most_similar.split(",")
                 text = (
                     "\n<span style='color:red;text-align:center;'>"
-                    f"{most_similar_models[0]}, {most_similar_models[1]}, "
-                    f"and {most_similar_models[2]}. "
+                    f"{most_similar_list[0]}, {most_similar_list[1]}, "
+                    f"and {most_similar_list[2]}. "
                     "</span>"
                 )
             else:
                 # currently the similarity widget expects the most_similar_models
                 # to allows contains 3 models. For now we will just send three empty
                 # strings but at some point we should handle an arbitrary case.
-                most_similar_models = ["", "", ""]
-                text = ""
+                most_similar_list = ["", "", ""]
+                text = "NTD"
 
             # Create option to click to enlarge image
             widget.ui.similarityImg.mousePressEvent = (
                 lambda event: self.open_similarity_report(
-                    model_id, png_filepath, most_similar_models
+                    model_id, png_filepath, most_similar_list
                 )
             )
             # Create option to click to enlarge image
             self.model_similarity_report[model_id] = SimilarityAnalysisReport(
-                png_filepath, most_similar_models
+                png_filepath, most_similar_list
             )
 
             widget.ui.similarityCorrelation.setText(text)
@@ -878,16 +885,37 @@ class DigestApp(QMainWindow):
             movie.start()
 
             self.update_similarity_widget(
-                bool(digest_model.similarity_heatmap_path),
-                digest_model.unique_id,
-                "",
-                digest_model.similarity_heatmap_path,
+                completed_successfully=bool(digest_model.similarity_heatmap_path),
+                model_id=digest_model.unique_id,
+                most_similar="",
+                png_filepath=digest_model.similarity_heatmap_path,
             )
 
             progress.close()
 
         except FileNotFoundError as e:
             print(f"File not found: {e.filename}")
+
+    def load_model(self, file_path: str):
+
+        # Ensure the filepath follows a standard formatting:
+        file_path = os.path.normpath(file_path)
+
+        if not os.path.exists(file_path):
+            return
+
+        file_ext = os.path.splitext(file_path)[-1]
+
+        if file_ext == ".onnx":
+            self.load_onnx(file_path)
+        elif file_ext == ".yaml":
+            self.load_report(file_path)
+        else:
+            bad_ext_dialog = StatusDialog(
+                f"Digest does not support files with the extension {file_ext}",
+                parent=self,
+            )
+            bad_ext_dialog.show()
 
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
@@ -897,12 +925,7 @@ class DigestApp(QMainWindow):
         if event.mimeData().hasUrls():
             for url in event.mimeData().urls():
                 file_path = url.toLocalFile()
-                if file_path.endswith(".onnx"):
-                    self.load_onnx(file_path)
-                    break
-                elif file_path.endswith(".yaml"):
-                    self.load_report(file_path)
-                    break
+                self.load_model(file_path)
 
     ## functions for changing menu page
     def logo_clicked(self):
@@ -949,9 +972,6 @@ class DigestApp(QMainWindow):
         save_directory = QFileDialog(self).getExistingDirectory(
             self, "Select Directory"
         )
-
-        if not save_directory:
-            return
 
         # Check if the directory exists and is writable
         if not os.path.exists(save_directory) or not os.access(save_directory, os.W_OK):

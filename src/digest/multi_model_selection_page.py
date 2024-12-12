@@ -65,12 +65,7 @@ class AnalysisThread(QThread):
 
         self.close_progress.emit()
 
-        model_list = [
-            model
-            for model in self.model_dict.values()
-            if isinstance(model, DigestOnnxModel)
-            or isinstance(model, DigestReportModel)
-        ]
+        model_list = [model for model in self.model_dict.values()]
 
         self.completed.emit(model_list)
 

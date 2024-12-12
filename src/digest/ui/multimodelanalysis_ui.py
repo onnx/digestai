@@ -26,7 +26,7 @@ class Ui_multiModelAnalysis(object):
     def setupUi(self, multiModelAnalysis):
         if not multiModelAnalysis.objectName():
             multiModelAnalysis.setObjectName(u"multiModelAnalysis")
-        multiModelAnalysis.resize(908, 647)
+        multiModelAnalysis.resize(1085, 866)
         sizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -71,7 +71,7 @@ class Ui_multiModelAnalysis(object):
         self.modelName.setIndent(5)
         self.modelName.setTextInteractionFlags(Qt.TextInteractionFlag.LinksAccessibleByMouse|Qt.TextInteractionFlag.TextSelectableByKeyboard|Qt.TextInteractionFlag.TextSelectableByMouse)
 
-        self.verticalLayout_17.addWidget(self.modelName, 0, Qt.AlignmentFlag.AlignTop)
+        self.verticalLayout_17.addWidget(self.modelName)
 
 
         self.summaryTopBannerLayout.addWidget(self.modelNameFrame)
@@ -127,7 +127,7 @@ class Ui_multiModelAnalysis(object):
 
         self.scrollArea = QScrollArea(multiModelAnalysis)
         self.scrollArea.setObjectName(u"scrollArea")
-        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.MinimumExpanding)
+        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)
         sizePolicy4.setHorizontalStretch(0)
         sizePolicy4.setVerticalStretch(0)
         sizePolicy4.setHeightForWidth(self.scrollArea.sizePolicy().hasHeightForWidth())
@@ -138,7 +138,7 @@ class Ui_multiModelAnalysis(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 888, 464))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 1065, 688))
         sizePolicy5 = QSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)
         sizePolicy5.setHorizontalStretch(0)
         sizePolicy5.setVerticalStretch(100)
@@ -165,6 +165,11 @@ class Ui_multiModelAnalysis(object):
 
         self.frame_2 = QFrame(self.scrollAreaWidgetContents)
         self.frame_2.setObjectName(u"frame_2")
+        sizePolicy7 = QSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Preferred)
+        sizePolicy7.setHorizontalStretch(0)
+        sizePolicy7.setVerticalStretch(0)
+        sizePolicy7.setHeightForWidth(self.frame_2.sizePolicy().hasHeightForWidth())
+        self.frame_2.setSizePolicy(sizePolicy7)
         self.frame_2.setFrameShape(QFrame.Shape.StyledPanel)
         self.frame_2.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout_2 = QHBoxLayout(self.frame_2)
@@ -177,29 +182,29 @@ class Ui_multiModelAnalysis(object):
         self.verticalLayout_3.setObjectName(u"verticalLayout_3")
         self.opHistogramChart = HistogramChartWidget(self.combinedHistogramFrame)
         self.opHistogramChart.setObjectName(u"opHistogramChart")
-        sizePolicy7 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
-        sizePolicy7.setHorizontalStretch(0)
-        sizePolicy7.setVerticalStretch(0)
-        sizePolicy7.setHeightForWidth(self.opHistogramChart.sizePolicy().hasHeightForWidth())
-        self.opHistogramChart.setSizePolicy(sizePolicy7)
+        sizePolicy8 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
+        sizePolicy8.setHorizontalStretch(0)
+        sizePolicy8.setVerticalStretch(0)
+        sizePolicy8.setHeightForWidth(self.opHistogramChart.sizePolicy().hasHeightForWidth())
+        self.opHistogramChart.setSizePolicy(sizePolicy8)
         self.opHistogramChart.setMinimumSize(QSize(500, 300))
 
-        self.verticalLayout_3.addWidget(self.opHistogramChart, 0, Qt.AlignmentFlag.AlignTop)
+        self.verticalLayout_3.addWidget(self.opHistogramChart)
 
 
         self.horizontalLayout_2.addWidget(self.combinedHistogramFrame)
 
         self.stackedHistogramFrame = QFrame(self.frame_2)
         self.stackedHistogramFrame.setObjectName(u"stackedHistogramFrame")
+        sizePolicy9 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        sizePolicy9.setHorizontalStretch(0)
+        sizePolicy9.setVerticalStretch(0)
+        sizePolicy9.setHeightForWidth(self.stackedHistogramFrame.sizePolicy().hasHeightForWidth())
+        self.stackedHistogramFrame.setSizePolicy(sizePolicy9)
         self.stackedHistogramFrame.setFrameShape(QFrame.Shape.StyledPanel)
         self.stackedHistogramFrame.setFrameShadow(QFrame.Shadow.Raised)
         self.verticalLayout_5 = QVBoxLayout(self.stackedHistogramFrame)
         self.verticalLayout_5.setObjectName(u"verticalLayout_5")
-        self.verticalLayout_4 = QVBoxLayout()
-        self.verticalLayout_4.setObjectName(u"verticalLayout_4")
-
-        self.verticalLayout_5.addLayout(self.verticalLayout_4)
-
 
         self.horizontalLayout_2.addWidget(self.stackedHistogramFrame)
 
