@@ -7,6 +7,39 @@ QFrame {
     background-color: transparent;
 }
 
+QTextEdit {
+    background-color: #1e1e1e;
+    color: #cecece;
+    border: 1px solid #333333;
+    border-radius: 3px;
+    padding: 2px;
+}
+
+QTextEdit::disabled {
+    background-color: #404040;
+    color: #656565;
+    border-color: #333333;
+}
+
+QTextEdit::selection {
+    background-color: #264f78;
+    color: #ffffff;
+}
+
+QGroupBox{
+    background-color: transparent;
+    border: 1px solid #282c34;
+    border-radius: 5px;
+    margin-top: 2ex;
+}
+
+QGroupBox::title {
+    color: lightgrey;
+    subcontrol-origin: margin;
+    left: 7px;
+    padding: 0px 5px 0px 5px;    
+}
+
 QMenu {
     background-color: #333333;  
     color: #DDDDDD;

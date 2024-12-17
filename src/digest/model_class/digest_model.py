@@ -13,6 +13,7 @@ from typing import List, Dict, Optional, Any, Union
 class SupportedModelTypes(Enum):
     ONNX = "onnx"
     REPORT = "report"
+    PYTORCH = "pytorch"
 
 
 class NodeParsingException(Exception):
@@ -94,10 +95,12 @@ class NodeData(OrderedDict[str, NodeInfo]):
 
 
 class DigestModel(ABC):
-    def __init__(self, filepath: str, model_name: str, model_type: SupportedModelTypes):
+    def __init__(
+        self, file_path: str, model_name: str, model_type: SupportedModelTypes
+    ):
         # Public members exposed to the API
         self.unique_id: str = str(uuid4())
-        self.filepath: Optional[str] = filepath
+        self.file_path: Optional[str] = os.path.abspath(file_path)
         self.model_name: str = model_name
         self.model_type: SupportedModelTypes = model_type
         self.node_type_counts: NodeTypeCounts = NodeTypeCounts()
@@ -122,27 +125,27 @@ class DigestModel(ABC):
         pass
 
     @abstractmethod
-    def save_yaml_report(self, filepath: str) -> None:
+    def save_yaml_report(self, file_path: str) -> None:
         pass
 
     @abstractmethod
-    def save_text_report(self, filepath: str) -> None:
+    def save_text_report(self, file_path: str) -> None:
         pass
 
-    def save_nodes_csv_report(self, filepath: str) -> None:
-        save_nodes_csv_report(self.node_data, filepath)
+    def save_nodes_csv_report(self, file_path: str) -> None:
+        save_nodes_csv_report(self.node_data, file_path)
 
-    def save_node_type_counts_csv_report(self, filepath: str) -> None:
+    def save_node_type_counts_csv_report(self, file_path: str) -> None:
         if self.node_type_counts:
-            save_node_type_counts_csv_report(self.node_type_counts, filepath)
+            save_node_type_counts_csv_report(self.node_type_counts, file_path)
 
-    def save_node_shape_counts_csv_report(self, filepath: str) -> None:
-        save_node_shape_counts_csv_report(self.get_node_shape_counts(), filepath)
+    def save_node_shape_counts_csv_report(self, file_path: str) -> None:
+        save_node_shape_counts_csv_report(self.get_node_shape_counts(), file_path)
 
 
-def save_nodes_csv_report(node_data: NodeData, filepath: str) -> None:
+def save_nodes_csv_report(node_data: NodeData, file_path: str) -> None:
 
-    parent_dir = os.path.dirname(os.path.abspath(filepath))
+    parent_dir = os.path.dirname(os.path.abspath(file_path))
     if not os.path.exists(parent_dir):
         raise FileNotFoundError(f"Directory {parent_dir} does not exist.")
 
@@ -186,27 +189,27 @@ def save_nodes_csv_report(node_data: NodeData, filepath: str) -> None:
 
     fieldnames = fieldnames + input_fieldnames + output_fieldnames
     try:
-        with open(filepath, "w", encoding="utf-8", newline="") as csvfile:
+        with open(file_path, "w", encoding="utf-8", newline="") as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames, lineterminator="\n")
             writer.writeheader()
             writer.writerows(flattened_data)
     except PermissionError as exception:
         raise PermissionError(
-            f"Saving reports to {filepath} failed with error {exception}"
+            f"Saving reports to {file_path} failed with error {exception}"
         )
 
 
 def save_node_type_counts_csv_report(
-    node_type_counts: NodeTypeCounts, filepath: str
+    node_type_counts: NodeTypeCounts, file_path: str
 ) -> None:
 
-    parent_dir = os.path.dirname(os.path.abspath(filepath))
+    parent_dir = os.path.dirname(os.path.abspath(file_path))
     if not os.path.exists(parent_dir):
         raise FileNotFoundError(f"Directory {parent_dir} does not exist.")
 
     header = ["Node Type", "Count"]
 
-    with open(filepath, "w", encoding="utf-8", newline="") as csvfile:
+    with open(file_path, "w", encoding="utf-8", newline="") as csvfile:
         writer = csv.writer(csvfile, lineterminator="\n")
         writer.writerow(header)
         for node_type, node_count in node_type_counts.items():
@@ -214,16 +217,16 @@ def save_node_type_counts_csv_report(
 
 
 def save_node_shape_counts_csv_report(
-    node_shape_counts: NodeShapeCounts, filepath: str
+    node_shape_counts: NodeShapeCounts, file_path: str
 ) -> None:
 
-    parent_dir = os.path.dirname(os.path.abspath(filepath))
+    parent_dir = os.path.dirname(os.path.abspath(file_path))
     if not os.path.exists(parent_dir):
         raise FileNotFoundError(f"Directory {parent_dir} does not exist.")
 
     header = ["Node Type", "Input Tensors Shapes", "Count"]
 
-    with open(filepath, "w", encoding="utf-8", newline="") as csvfile:
+    with open(file_path, "w", encoding="utf-8", newline="") as csvfile:
         writer = csv.writer(csvfile, dialect="excel", lineterminator="\n")
         writer.writerow(header)
         for node_type, node_info in node_shape_counts.items():

@@ -17,7 +17,7 @@ from digest.model_class.digest_model import (
 
 def parse_tensor_info(
     csv_tensor_cell_value,
-) -> Tuple[str, list, str, Union[str, float]]:
+) -> Tuple[str, list, str, Optional[float]]:
     """This is a helper function that expects the input to come from parsing
     the nodes csv and extracting either an input or output tensor."""
 
@@ -40,7 +40,9 @@ def parse_tensor_info(
     if not isinstance(shape, list):
         shape = list(shape)
 
-    if size != "None":
+    if size == "None":
+        size = None
+    else:
         size = float(size.split()[0])
 
     return name.strip(), shape, dtype.strip(), size
@@ -49,30 +51,30 @@ def parse_tensor_info(
 class DigestReportModel(DigestModel):
     def __init__(
         self,
-        report_filepath: str,
+        report_file_path: str,
     ) -> None:
 
         self.model_type = SupportedModelTypes.REPORT
 
-        self.is_valid = validate_yaml(report_filepath)
+        self.is_valid = validate_yaml(report_file_path)
 
         if not self.is_valid:
-            print(f"The yaml file {report_filepath} is not a valid digest report.")
+            print(f"The yaml file {report_file_path} is not a valid digest report.")
             return
 
         self.model_data = OrderedDict()
-        with open(report_filepath, "r", encoding="utf-8") as yaml_f:
+        with open(report_file_path, "r", encoding="utf-8") as yaml_f:
             self.model_data = yaml.safe_load(yaml_f)
 
         model_name = self.model_data["model_name"]
-        super().__init__(report_filepath, model_name, SupportedModelTypes.REPORT)
+        super().__init__(report_file_path, model_name, SupportedModelTypes.REPORT)
 
         self.similarity_heatmap_path: Optional[str] = None
         self.node_data = NodeData()
 
         # Given the path to the digest report, let's check if its a complete cache
         # and we can grab the nodes csv data and the similarity heatmap
-        cache_dir = os.path.dirname(os.path.abspath(report_filepath))
+        cache_dir = os.path.dirname(os.path.abspath(report_file_path))
         expected_heatmap_file = os.path.join(cache_dir, f"{model_name}_heatmap.png")
         if os.path.exists(expected_heatmap_file):
             self.similarity_heatmap_path = expected_heatmap_file
@@ -139,10 +141,10 @@ class DigestReportModel(DigestModel):
     def parse_model_nodes(self) -> None:
         """There are no model nodes to parse"""
 
-    def save_yaml_report(self, filepath: str) -> None:
+    def save_yaml_report(self, file_path: str) -> None:
         """Report models are not intended to be saved"""
 
-    def save_text_report(self, filepath: str) -> None:
+    def save_text_report(self, file_path: str) -> None:
         """Report models are not intended to be saved"""
 
 

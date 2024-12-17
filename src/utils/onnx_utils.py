@@ -211,3 +211,9 @@ def optimize_onnx_model(
         except onnx.checker.ValidationError:
             print("Model did not pass checker!")
             return model_proto, False
+
+
+def get_supported_opset() -> int:
+    """This function will return the opset version associated
+    with the currently installed ONNX library"""
+    return onnx.defs.onnx_opset_version()

@@ -73,26 +73,26 @@ class SimilarityThread(QThread):
 
     def __init__(
         self,
-        model_filepath: Optional[str] = None,
-        png_filepath: Optional[str] = None,
+        model_file_path: Optional[str] = None,
+        png_file_path: Optional[str] = None,
         model_id: Optional[str] = None,
     ):
         super().__init__()
-        self.model_filepath = model_filepath
-        self.png_filepath = png_filepath
+        self.model_file_path = model_file_path
+        self.png_file_path = png_file_path
         self.model_id = model_id
 
     def run(self):
-        if not self.model_filepath:
-            raise ValueError("You must set the model filepath")
-        if not self.png_filepath:
-            raise ValueError("You must set the png filepath")
+        if not self.model_file_path:
+            raise ValueError("You must set the model file_path")
+        if not self.png_file_path:
+            raise ValueError("You must set the png file_path")
         if not self.model_id:
             raise ValueError("You must set the model id")
 
         try:
             most_similar, _, df_sorted = find_match(
-                self.model_filepath,
+                self.model_file_path,
                 dequantize=False,
                 replace=True,
             )
@@ -100,12 +100,12 @@ class SimilarityThread(QThread):
             # We convert List[str] to str to send through the signal
             most_similar = ",".join(most_similar)
             self.completed_successfully.emit(
-                True, self.model_id, most_similar, self.png_filepath, df_sorted
+                True, self.model_id, most_similar, self.png_file_path, df_sorted
             )
         except Exception as e:  # pylint: disable=broad-exception-caught
             most_similar = ""
             self.completed_successfully.emit(
-                False, self.model_id, most_similar, self.png_filepath, df_sorted
+                False, self.model_id, most_similar, self.png_file_path, df_sorted
             )
             print(f"Issue creating similarity analysis: {e}")
 

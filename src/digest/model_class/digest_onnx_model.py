@@ -23,13 +23,11 @@ class DigestOnnxModel(DigestModel):
     def __init__(
         self,
         onnx_model: onnx.ModelProto,
-        onnx_filepath: str = "",
+        onnx_file_path: str = "",
         model_name: str = "",
         save_proto: bool = True,
     ) -> None:
-        super().__init__(onnx_filepath, model_name, SupportedModelTypes.ONNX)
-
-        self.model_type = SupportedModelTypes.ONNX
+        super().__init__(onnx_file_path, model_name, SupportedModelTypes.ONNX)
 
         # Public members exposed to the API
         self.model_proto: Optional[onnx.ModelProto] = onnx_model if save_proto else None
@@ -510,9 +508,9 @@ class DigestOnnxModel(DigestModel):
                     self.node_type_flops.get(node.op_type, 0) + node_info.flops
                 )
 
-    def save_yaml_report(self, filepath: str) -> None:
+    def save_yaml_report(self, file_path: str) -> None:
 
-        parent_dir = os.path.dirname(os.path.abspath(filepath))
+        parent_dir = os.path.dirname(os.path.abspath(file_path))
         if not os.path.exists(parent_dir):
             raise FileNotFoundError(f"Directory {parent_dir} does not exist.")
 
@@ -526,7 +524,7 @@ class DigestOnnxModel(DigestModel):
             "report_date": report_date,
             "digest_version": digest_version,
             "model_type": self.model_type.value,
-            "model_file": self.filepath,
+            "model_file": self.file_path,
             "model_name": self.model_name,
             "model_version": self.model_version,
             "graph_name": self.graph_name,
@@ -545,12 +543,12 @@ class DigestOnnxModel(DigestModel):
             "output_tensors": output_tensors,
         }
 
-        with open(filepath, "w", encoding="utf-8") as f_p:
+        with open(file_path, "w", encoding="utf-8") as f_p:
             yaml.dump(yaml_data, f_p, sort_keys=False)
 
-    def save_text_report(self, filepath: str) -> None:
+    def save_text_report(self, file_path: str) -> None:
 
-        parent_dir = os.path.dirname(os.path.abspath(filepath))
+        parent_dir = os.path.dirname(os.path.abspath(file_path))
         if not os.path.exists(parent_dir):
             raise FileNotFoundError(f"Directory {parent_dir} does not exist.")
 
@@ -558,12 +556,12 @@ class DigestOnnxModel(DigestModel):
 
         digest_version = importlib.metadata.version("digestai")
 
-        with open(filepath, "w", encoding="utf-8") as f_p:
+        with open(file_path, "w", encoding="utf-8") as f_p:
             f_p.write(f"Report created on {report_date}\n")
             f_p.write(f"Digest version: {digest_version}\n")
             f_p.write(f"Model type: {self.model_type.name}\n")
-            if self.filepath:
-                f_p.write(f"ONNX file: {self.filepath}\n")
+            if self.file_path:
+                f_p.write(f"ONNX file: {self.file_path}\n")
             f_p.write(f"Name of the model: {self.model_name}\n")
             f_p.write(f"Model version: {self.model_version}\n")
             f_p.write(f"Name of the graph: {self.graph_name}\n")
