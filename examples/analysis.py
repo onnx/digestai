@@ -73,7 +73,7 @@ def main(onnx_files: str, output_dir: str):
                 print(f"dim: {dynamic_shape}")
 
         digest_model = DigestOnnxModel(
-            model_proto, onnx_filepath=onnx_file, model_name=model_name
+            model_proto, onnx_file_path=onnx_file, model_name=model_name
         )
 
         # Update the global model dictionary

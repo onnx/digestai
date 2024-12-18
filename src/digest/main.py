@@ -287,7 +287,7 @@ class DigestApp(QMainWindow):
 
             # delete the digest model to free up used memory
             if unique_id in self.digest_models:
-                del self.digest_models[unique_id]
+                self.digest_models.pop(unique_id)
 
         self.ui.tabWidget.removeTab(index)
         if self.ui.tabWidget.count() == 0:
@@ -486,20 +486,41 @@ class DigestApp(QMainWindow):
         # Every time an onnx is loaded we should emulate a model summary button click
         self.summary_clicked()
 
-        # Before opening the file, check to see if it is already opened.
+        model_proto = None
+
+        # Before opening the ONNX file, check to see if it is already opened.
         for index in range(self.ui.tabWidget.count()):
             widget = self.ui.tabWidget.widget(index)
-            if isinstance(widget, modelSummary) and file_path == widget.file:
-                self.ui.tabWidget.setCurrentIndex(index)
-                return
+            if (
+                isinstance(widget, modelSummary)
+                and isinstance(widget.digest_model, DigestOnnxModel)
+                and file_path == widget.file
+            ):
+                # Check if the model proto is different
+                if widget.digest_model.model_proto:
+                    model_proto = onnx_utils.load_onnx(
+                        file_path, load_external_data=False
+                    )
+                    # If they are equivalent, set the GUI to show the existing
+                    # report and return
+                    if model_proto == widget.digest_model.model_proto:
+                        self.ui.tabWidget.setCurrentIndex(index)
+                        return
+                    # If they aren't equivalent, then the proto has been modified. In this case,
+                    # we close the tab associated with the stale model, remove from the model list,
+                    # then go through the standard process of adding it to the tabWidget. In the
+                    # future, it may be slightly better to have an update tab function.
+                    else:
+                        self.closeTab(index)
 
         try:
 
             progress = ProgressDialog("Loading & Optimizing ONNX Model...", 8, self)
             QApplication.processEvents()  # Process pending events
 
-            model = onnx_utils.load_onnx(file_path, load_external_data=False)
-            opt_model, opt_passed = onnx_utils.optimize_onnx_model(model)
+            if not model_proto:
+                model_proto = onnx_utils.load_onnx(file_path, load_external_data=False)
+            opt_model, opt_passed = onnx_utils.optimize_onnx_model(model_proto)
             progress.step()
 
             basename = os.path.splitext(os.path.basename(file_path))
@@ -918,6 +939,9 @@ class DigestApp(QMainWindow):
         basename = os.path.splitext(os.path.basename(file_path))
         model_name = basename[0]
 
+        # The current support for PyTorch includes exporting it to ONNX. In this case,
+        # an ingest window will pop up giving the user options to export. This window
+        # will block the main GUI until the ingest window is closed
         self.pytorch_ingest = PyTorchIngest(file_path, model_name)
         self.pytorch_ingest_window = PopupDialog(
             self.pytorch_ingest, "PyTorch Ingest", self
@@ -1027,35 +1051,39 @@ class DigestApp(QMainWindow):
                 os.path.join(save_directory, f"{model_name}_histogram.png"), "PNG"
             )
 
-        # Save csv of node type counts
-        node_type_file_path = os.path.join(
-            save_directory, f"{model_name}_node_type_counts.csv"
-        )
-        digest_model.save_node_type_counts_csv_report(node_type_file_path)
+            # Save csv of node type counts
+            node_type_file_path = os.path.join(
+                save_directory, f"{model_name}_node_type_counts.csv"
+            )
+            digest_model.save_node_type_counts_csv_report(node_type_file_path)
 
-        # Save (copy) the similarity image
-        png_file_path = self.model_similarity_thread[
-            digest_model.unique_id
-        ].png_file_path
-        png_save_path = os.path.join(save_directory, f"{model_name}_heatmap.png")
-        if png_file_path and os.path.exists(png_file_path):
-            shutil.copy(png_file_path, png_save_path)
+            # Save (copy) the similarity image
+            png_file_path = self.model_similarity_thread[
+                digest_model.unique_id
+            ].png_file_path
+            png_save_path = os.path.join(save_directory, f"{model_name}_heatmap.png")
+            if png_file_path and os.path.exists(png_file_path):
+                shutil.copy(png_file_path, png_save_path)
 
-        # Save the text report
-        txt_report_file_path = os.path.join(save_directory, f"{model_name}_report.txt")
-        digest_model.save_text_report(txt_report_file_path)
+            # Save the text report
+            txt_report_file_path = os.path.join(
+                save_directory, f"{model_name}_report.txt"
+            )
+            digest_model.save_text_report(txt_report_file_path)
 
-        # Save the yaml report
-        yaml_report_file_path = os.path.join(
-            save_directory, f"{model_name}_report.yaml"
-        )
-        digest_model.save_yaml_report(yaml_report_file_path)
+            # Save the yaml report
+            yaml_report_file_path = os.path.join(
+                save_directory, f"{model_name}_report.yaml"
+            )
+            digest_model.save_yaml_report(yaml_report_file_path)
 
-        # Save the node list
-        nodes_report_file_path = os.path.join(save_directory, f"{model_name}_nodes.csv")
-        self.save_nodes_csv(nodes_report_file_path, False)
+            # Save the node list
+            nodes_report_file_path = os.path.join(
+                save_directory, f"{model_name}_nodes.csv"
+            )
+            self.save_nodes_csv(nodes_report_file_path, False)
 
-            self.save_nodes_csv(nodes_report_filepath, False)
+            self.save_nodes_csv(nodes_report_file_path, False)
         except Exception as exception:  # pylint: disable=broad-exception-caught
             self.status_dialog = StatusDialog(f"{exception}")
             self.status_dialog.show()

@@ -56,7 +56,7 @@ class TestDigestReports(unittest.TestCase):
         opt_model, _ = onnx_utils.optimize_onnx_model(model_proto)
         digest_model = DigestOnnxModel(
             opt_model,
-            onnx_filepath=TEST_ONNX,
+            onnx_file_path=TEST_ONNX,
             model_name=model_name,
             save_proto=False,
         )

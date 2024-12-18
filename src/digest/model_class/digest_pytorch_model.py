@@ -2,7 +2,7 @@
 
 import os
 from collections import OrderedDict
-from typing import List, Tuple, Optional, Any, Union
+from typing import List, Tuple, Optional, Union
 import inspect
 import onnx
 import torch
@@ -37,7 +37,9 @@ class DigestPyTorchModel(DigestModel):
 
         # Input dictionary to contain the names and shapes
         # required for exporting the ONNX model
-        self.input_tensor_info: OrderedDict[str, List[Any]] = OrderedDict()
+        self.input_tensor_info: OrderedDict[
+            str, Tuple[torch.dtype, List[Union[str, int]]]
+        ] = OrderedDict()
 
         self.pytorch_model = torch.load(pytorch_file_path)
 
@@ -58,21 +60,24 @@ class DigestPyTorchModel(DigestModel):
     def save_text_report(self, file_path: str) -> None:
         """This will be done in the DigestOnnxModel"""
 
-    def generate_random_tensor(self, shape: List[Union[str, int]]):
+    def generate_random_tensor(self, dtype: torch.dtype, shape: List[Union[str, int]]):
         static_shape = [dim if isinstance(dim, int) else 1 for dim in shape]
-        return torch.rand(static_shape)
+        if dtype in (torch.float16, torch.float32, torch.float64):
+            return torch.rand(static_shape, dtype=dtype)
+        else:
+            return torch.randint(0, 100, static_shape, dtype=dtype)
 
     def export_to_onnx(self, output_onnx_path: str) -> Union[onnx.ModelProto, None]:
 
         dummy_input_names: List[str] = list(self.input_tensor_info.keys())
         dummy_inputs: List[torch.Tensor] = []
 
-        for shape in self.input_tensor_info.values():
-            dummy_inputs.append(self.generate_random_tensor(shape))
+        for dtype, shape in self.input_tensor_info.values():
+            dummy_inputs.append(self.generate_random_tensor(dtype, shape))
 
         dynamic_axes = {
             name: {i: dim for i, dim in enumerate(shape) if isinstance(dim, str)}
-            for name, shape in self.input_tensor_info.items()
+            for name, (_, shape) in self.input_tensor_info.items()
         }
 
         try:
@@ -92,7 +97,7 @@ class DigestPyTorchModel(DigestModel):
 
             return onnx.load(output_onnx_path)
 
-        except (TypeError, RuntimeError) as err:
+        except (ValueError, TypeError, RuntimeError) as err:
             print(f"Failed to export ONNX: {err}")
             raise
 
