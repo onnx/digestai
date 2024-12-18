@@ -2,7 +2,7 @@
 
 import os
 import glob
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Union
 from collections import defaultdict
 from google.protobuf.message import DecodeError
 import onnx
@@ -22,6 +22,8 @@ from digest.dialog import WarnDialog, ProgressDialog
 from digest.ui.multimodelselection_page_ui import Ui_MultiModelSelection
 from digest.multi_model_analysis import MultiModelAnalysis
 from digest.qt_utils import apply_dark_style_sheet, prompt_user_ram_limit
+from digest.model_class.digest_onnx_model import DigestOnnxModel
+from digest.model_class.digest_report_model import DigestReportModel
 from utils import onnx_utils
 
 
@@ -33,7 +35,9 @@ class AnalysisThread(QThread):
 
     def __init__(self):
         super().__init__()
-        self.model_dict: Dict[str, Optional[onnx_utils.DigestOnnxModel]] = {}
+        self.model_dict: Dict[
+            str, Optional[Union[DigestOnnxModel, DigestReportModel]]
+        ] = {}
         self.user_canceled = False
 
     def run(self):
@@ -47,19 +51,21 @@ class AnalysisThread(QThread):
             self.step_progress.emit()
             if model:
                 continue
-            model_name = os.path.splitext(os.path.basename(file))[0]
-            model_proto = onnx_utils.load_onnx(file, False)
-            self.model_dict[file] = onnx_utils.DigestOnnxModel(
-                model_proto, onnx_filepath=file, model_name=model_name, save_proto=False
-            )
+            model_name, file_ext = os.path.splitext(os.path.basename(file))
+            if file_ext == ".onnx":
+                model_proto = onnx_utils.load_onnx(file, False)
+                self.model_dict[file] = DigestOnnxModel(
+                    model_proto,
+                    onnx_file_path=file,
+                    model_name=model_name,
+                    save_proto=False,
+                )
+            elif file_ext == ".yaml":
+                self.model_dict[file] = DigestReportModel(file)
 
         self.close_progress.emit()
 
-        model_list = [
-            model
-            for model in self.model_dict.values()
-            if isinstance(model, onnx_utils.DigestOnnxModel)
-        ]
+        model_list = [model for model in self.model_dict.values()]
 
         self.completed.emit(model_list)
 
@@ -82,8 +88,10 @@ class MultiModelSelectionPage(QWidget):
         self.ui.warningLabel.hide()
         self.item_model = QStandardItemModel()
         self.item_model.itemChanged.connect(self.update_num_selected_label)
-        self.ui.selectAllBox.setCheckState(Qt.CheckState.Checked)
-        self.ui.selectAllBox.stateChanged.connect(self.update_list_view_items)
+        self.ui.radioAll.setChecked(True)
+        self.ui.radioAll.toggled.connect(self.update_list_view_items)
+        self.ui.radioONNX.toggled.connect(self.update_list_view_items)
+        self.ui.radioReports.toggled.connect(self.update_list_view_items)
         self.ui.selectFolderBtn.clicked.connect(self.openFolder)
         self.ui.duplicateLabel.hide()
         self.ui.modelListView.setModel(self.item_model)
@@ -94,7 +102,9 @@ class MultiModelSelectionPage(QWidget):
 
         self.ui.openAnalysisBtn.clicked.connect(self.start_analysis)
 
-        self.model_dict: Dict[str, Optional[onnx_utils.DigestOnnxModel]] = {}
+        self.model_dict: Dict[
+            str, Optional[Union[DigestOnnxModel, DigestReportModel]]
+        ] = {}
 
         self.analysis_thread: Optional[AnalysisThread] = None
         self.progress: Optional[ProgressDialog] = None
@@ -165,10 +175,20 @@ class MultiModelSelectionPage(QWidget):
             self.ui.openAnalysisBtn.setEnabled(False)
 
     def update_list_view_items(self):
-        state = self.ui.selectAllBox.checkState()
+        radio_all_state = self.ui.radioAll.isChecked()
+        radio_onnx_state = self.ui.radioONNX.isChecked()
+        radio_reports_state = self.ui.radioReports.isChecked()
         for row in range(self.item_model.rowCount()):
             item = self.item_model.item(row)
-            item.setCheckState(state)
+            value = item.data(Qt.ItemDataRole.DisplayRole)
+            if radio_all_state:
+                item.setCheckState(Qt.CheckState.Checked)
+            elif os.path.splitext(value)[-1] == ".onnx" and radio_onnx_state:
+                item.setCheckState(Qt.CheckState.Checked)
+            elif os.path.splitext(value)[-1] == ".yaml" and radio_reports_state:
+                item.setCheckState(Qt.CheckState.Checked)
+            else:
+                item.setCheckState(Qt.CheckState.Unchecked)
 
     def set_directory(self, directory: str):
         """
@@ -184,15 +204,30 @@ class MultiModelSelectionPage(QWidget):
             return
 
         progress = ProgressDialog("Searching Directory for ONNX Files", 0, self)
+
         onnx_file_list = list(
             glob.glob(os.path.join(directory, "**/*.onnx"), recursive=True)
         )
+        onnx_file_list = [os.path.normpath(model_file) for model_file in onnx_file_list]
 
-        onnx_file_list = [os.path.normpath(onnx_file) for onnx_file in onnx_file_list]
+        yaml_file_list = list(
+            glob.glob(os.path.join(directory, "**/*.yaml"), recursive=True)
+        )
+        yaml_file_list = [os.path.normpath(model_file) for model_file in yaml_file_list]
+
+        # Filter out YAML files that are not valid reports
+        report_file_list = []
+        for yaml_file in yaml_file_list:
+            digest_report = DigestReportModel(yaml_file)
+            if digest_report.is_valid:
+                report_file_list.append(yaml_file)
+
+        total_num_models = len(onnx_file_list) + len(report_file_list)
+
         serialized_models_paths: defaultdict[bytes, List[str]] = defaultdict(list)
 
         progress.close()
-        progress = ProgressDialog("Loading ONNX Models", len(onnx_file_list), self)
+        progress = ProgressDialog("Loading Models", total_num_models, self)
 
         memory_limit_percentage = 90
         models_loaded = 0
@@ -202,17 +237,20 @@ class MultiModelSelectionPage(QWidget):
                 break
             try:
                 models_loaded += 1
-                model = onnx.load(filepath, load_external_data=False)
-                dialog_msg = f"""Warning: System RAM has exceeded the threshold of {memory_limit_percentage}%.
-                    No further models will be loaded.
-                """
+                if os.path.splitext(filepath)[-1] == ".onnx":
+                    model = onnx.load(filepath, load_external_data=False)
+                    serialized_models_paths[model.SerializeToString()].append(filepath)
+                dialog_msg = (
+                    "Warning: System RAM has exceeded the threshold of "
+                    f"{memory_limit_percentage}%. No further models will be loaded. "
+                )
                 if prompt_user_ram_limit(
                     sys_ram_percent_limit=memory_limit_percentage,
                     message=dialog_msg,
                     parent=self,
                 ):
                     self.update_warning_label(
-                        f"Loaded only {models_loaded - 1} out of {len(onnx_file_list)} models "
+                        f"Loaded only {models_loaded - 1} out of {total_num_models} models "
                         f"as memory consumption has reached {memory_limit_percentage}% of "
                         "system memory. Preventing further loading of models."
                     )
@@ -223,15 +261,13 @@ class MultiModelSelectionPage(QWidget):
                     break
                 else:
                     self.ui.warningLabel.hide()
-                serialized_models_paths[model.SerializeToString()].append(filepath)
+
             except DecodeError as error:
                 print(f"Error decoding model {filepath}: {error}")
 
         progress.close()
 
-        progress = ProgressDialog(
-            "Processing ONNX Models", len(serialized_models_paths), self
-        )
+        progress = ProgressDialog("Processing Models", total_num_models, self)
 
         num_duplicates = 0
         self.item_model.clear()
@@ -255,6 +291,12 @@ class MultiModelSelectionPage(QWidget):
                 item.setCheckState(Qt.CheckState.Checked)
                 self.item_model.appendRow(item)
 
+        for path in report_file_list:
+            item = QStandardItem(path)
+            item.setCheckable(True)
+            item.setCheckState(Qt.CheckState.Checked)
+            self.item_model.appendRow(item)
+
         progress.close()
 
         if num_duplicates:
@@ -270,7 +312,7 @@ class MultiModelSelectionPage(QWidget):
         self.update_num_selected_label()
 
         self.update_message_label(
-            f"Found a total of {len(onnx_file_list)} ONNX files. "
+            f"Found a total of {total_num_models} model files. "
             "Right click a model below "
             "to open it up in the model summary view."
         )
@@ -289,7 +331,9 @@ class MultiModelSelectionPage(QWidget):
         self.analysis_thread.model_dict = self.model_dict
         self.analysis_thread.start()
 
-    def open_analysis(self, model_list: List[onnx_utils.DigestOnnxModel]):
+    def open_analysis(
+        self, model_list: List[Union[DigestOnnxModel, DigestReportModel]]
+    ):
         multi_model_analysis = MultiModelAnalysis(model_list)
         self.analysis_window.setCentralWidget(multi_model_analysis)
         self.analysis_window.setWindowIcon(QIcon(":/assets/images/digest_logo_500.jpg"))

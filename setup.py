@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="digestai",
-    version="1.0.0",
+    version="1.2.0",
     description="Model analysis toolkit",
     author="Philip Colangelo, Daniel Holanda",
     packages=find_packages(where="src"),
@@ -25,6 +25,8 @@ setup(
         "platformdirs>=4.2.2",
         "pyyaml>=6.0.1",
         "psutil>=6.0.0",
+        "torch",
+        "transformers",
     ],
     classifiers=[],
     entry_points={"console_scripts": ["digest = digest.main:main"]},

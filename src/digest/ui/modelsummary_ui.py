@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'modelsummary.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.8.0
+## Created by: Qt User Interface Compiler version 6.8.1
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -29,7 +29,7 @@ class Ui_modelSummary(object):
     def setupUi(self, modelSummary):
         if not modelSummary.objectName():
             modelSummary.setObjectName(u"modelSummary")
-        modelSummary.resize(980, 687)
+        modelSummary.resize(1138, 837)
         sizePolicy = QSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -115,17 +115,22 @@ class Ui_modelSummary(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 991, 1453))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, -776, 991, 1443))
+        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.MinimumExpanding)
+        sizePolicy2.setHorizontalStretch(0)
+        sizePolicy2.setVerticalStretch(0)
+        sizePolicy2.setHeightForWidth(self.scrollAreaWidgetContents.sizePolicy().hasHeightForWidth())
+        self.scrollAreaWidgetContents.setSizePolicy(sizePolicy2)
         self.scrollAreaWidgetContents.setStyleSheet(u"background-color: black;")
         self.verticalLayout_20 = QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_20.setObjectName(u"verticalLayout_20")
         self.cardFrame = QFrame(self.scrollAreaWidgetContents)
         self.cardFrame.setObjectName(u"cardFrame")
-        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        sizePolicy2.setHorizontalStretch(0)
-        sizePolicy2.setVerticalStretch(0)
-        sizePolicy2.setHeightForWidth(self.cardFrame.sizePolicy().hasHeightForWidth())
-        self.cardFrame.setSizePolicy(sizePolicy2)
+        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        sizePolicy3.setHorizontalStretch(0)
+        sizePolicy3.setVerticalStretch(0)
+        sizePolicy3.setHeightForWidth(self.cardFrame.sizePolicy().hasHeightForWidth())
+        self.cardFrame.setSizePolicy(sizePolicy3)
         self.cardFrame.setStyleSheet(u"background: transparent; /*rgb(40,40,40)*/")
         self.cardFrame.setFrameShape(QFrame.Shape.StyledPanel)
         self.cardFrame.setFrameShadow(QFrame.Shadow.Raised)
@@ -134,19 +139,19 @@ class Ui_modelSummary(object):
         self.horizontalLayout.setContentsMargins(-1, -1, -1, 1)
         self.cardWidget = QWidget(self.cardFrame)
         self.cardWidget.setObjectName(u"cardWidget")
-        sizePolicy2.setHeightForWidth(self.cardWidget.sizePolicy().hasHeightForWidth())
-        self.cardWidget.setSizePolicy(sizePolicy2)
+        sizePolicy3.setHeightForWidth(self.cardWidget.sizePolicy().hasHeightForWidth())
+        self.cardWidget.setSizePolicy(sizePolicy3)
         self.horizontalLayout_2 = QHBoxLayout(self.cardWidget)
         self.horizontalLayout_2.setSpacing(13)
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
         self.horizontalLayout_2.setContentsMargins(-1, 6, 25, 35)
         self.opsetFrame = QFrame(self.cardWidget)
         self.opsetFrame.setObjectName(u"opsetFrame")
-        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
-        sizePolicy3.setHorizontalStretch(0)
-        sizePolicy3.setVerticalStretch(0)
-        sizePolicy3.setHeightForWidth(self.opsetFrame.sizePolicy().hasHeightForWidth())
-        self.opsetFrame.setSizePolicy(sizePolicy3)
+        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
+        sizePolicy4.setHorizontalStretch(0)
+        sizePolicy4.setVerticalStretch(0)
+        sizePolicy4.setHeightForWidth(self.opsetFrame.sizePolicy().hasHeightForWidth())
+        self.opsetFrame.setSizePolicy(sizePolicy4)
         self.opsetFrame.setMinimumSize(QSize(220, 70))
         self.opsetFrame.setMaximumSize(QSize(16777215, 80))
         self.opsetFrame.setStyleSheet(u"QFrame {\n"
@@ -164,11 +169,11 @@ class Ui_modelSummary(object):
         self.verticalLayout_5.setContentsMargins(-1, -1, 6, -1)
         self.opsetLabel = QLabel(self.opsetFrame)
         self.opsetLabel.setObjectName(u"opsetLabel")
-        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
-        sizePolicy4.setHorizontalStretch(0)
-        sizePolicy4.setVerticalStretch(0)
-        sizePolicy4.setHeightForWidth(self.opsetLabel.sizePolicy().hasHeightForWidth())
-        self.opsetLabel.setSizePolicy(sizePolicy4)
+        sizePolicy5 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        sizePolicy5.setHorizontalStretch(0)
+        sizePolicy5.setVerticalStretch(0)
+        sizePolicy5.setHeightForWidth(self.opsetLabel.sizePolicy().hasHeightForWidth())
+        self.opsetLabel.setSizePolicy(sizePolicy5)
         self.opsetLabel.setStyleSheet(u"QLabel {\n"
 "    font-size: 18px;\n"
 "    font-weight: bold;\n"
@@ -178,12 +183,12 @@ class Ui_modelSummary(object):
         self.opsetLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.opsetLabel.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
 
-        self.verticalLayout_5.addWidget(self.opsetLabel, 0, Qt.AlignmentFlag.AlignHCenter)
+        self.verticalLayout_5.addWidget(self.opsetLabel)
 
         self.opsetVersion = QLabel(self.opsetFrame)
         self.opsetVersion.setObjectName(u"opsetVersion")
-        sizePolicy4.setHeightForWidth(self.opsetVersion.sizePolicy().hasHeightForWidth())
-        self.opsetVersion.setSizePolicy(sizePolicy4)
+        sizePolicy5.setHeightForWidth(self.opsetVersion.sizePolicy().hasHeightForWidth())
+        self.opsetVersion.setSizePolicy(sizePolicy5)
         self.opsetVersion.setStyleSheet(u"QLabel {\n"
 "    font-size: 18px;\n"
 "    font-weight: bold;\n"
@@ -192,15 +197,15 @@ class Ui_modelSummary(object):
         self.opsetVersion.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.opsetVersion.setTextInteractionFlags(Qt.TextInteractionFlag.LinksAccessibleByMouse|Qt.TextInteractionFlag.TextSelectableByKeyboard|Qt.TextInteractionFlag.TextSelectableByMouse)
 
-        self.verticalLayout_5.addWidget(self.opsetVersion, 0, Qt.AlignmentFlag.AlignHCenter)
+        self.verticalLayout_5.addWidget(self.opsetVersion)
 
 
         self.horizontalLayout_2.addWidget(self.opsetFrame)
 
         self.nodesFrame = QFrame(self.cardWidget)
         self.nodesFrame.setObjectName(u"nodesFrame")
-        sizePolicy3.setHeightForWidth(self.nodesFrame.sizePolicy().hasHeightForWidth())
-        self.nodesFrame.setSizePolicy(sizePolicy3)
+        sizePolicy4.setHeightForWidth(self.nodesFrame.sizePolicy().hasHeightForWidth())
+        self.nodesFrame.setSizePolicy(sizePolicy4)
         self.nodesFrame.setMinimumSize(QSize(220, 70))
         self.nodesFrame.setMaximumSize(QSize(16777215, 80))
         self.nodesFrame.setStyleSheet(u"QFrame {\n"
@@ -218,8 +223,8 @@ class Ui_modelSummary(object):
         self.verticalLayout_12.setContentsMargins(-1, 9, -1, -1)
         self.nodesLabel = QLabel(self.nodesFrame)
         self.nodesLabel.setObjectName(u"nodesLabel")
-        sizePolicy4.setHeightForWidth(self.nodesLabel.sizePolicy().hasHeightForWidth())
-        self.nodesLabel.setSizePolicy(sizePolicy4)
+        sizePolicy5.setHeightForWidth(self.nodesLabel.sizePolicy().hasHeightForWidth())
+        self.nodesLabel.setSizePolicy(sizePolicy5)
         self.nodesLabel.setStyleSheet(u"QLabel {\n"
 "    font-size: 18px;\n"
 "    font-weight: bold;\n"
@@ -233,8 +238,8 @@ class Ui_modelSummary(object):
 
         self.nodes = QLabel(self.nodesFrame)
         self.nodes.setObjectName(u"nodes")
-        sizePolicy4.setHeightForWidth(self.nodes.sizePolicy().hasHeightForWidth())
-        self.nodes.setSizePolicy(sizePolicy4)
+        sizePolicy5.setHeightForWidth(self.nodes.sizePolicy().hasHeightForWidth())
+        self.nodes.setSizePolicy(sizePolicy5)
         self.nodes.setMinimumSize(QSize(150, 32))
         self.nodes.setStyleSheet(u"QLabel {\n"
 "    font-size: 18px;\n"
@@ -254,8 +259,8 @@ class Ui_modelSummary(object):
 
         self.paramFrame = QFrame(self.cardWidget)
         self.paramFrame.setObjectName(u"paramFrame")
-        sizePolicy3.setHeightForWidth(self.paramFrame.sizePolicy().hasHeightForWidth())
-        self.paramFrame.setSizePolicy(sizePolicy3)
+        sizePolicy4.setHeightForWidth(self.paramFrame.sizePolicy().hasHeightForWidth())
+        self.paramFrame.setSizePolicy(sizePolicy4)
         self.paramFrame.setMinimumSize(QSize(220, 70))
         self.paramFrame.setMaximumSize(QSize(16777215, 80))
         self.paramFrame.setStyleSheet(u"QFrame {\n"
@@ -272,8 +277,8 @@ class Ui_modelSummary(object):
         self.verticalLayout_9.setObjectName(u"verticalLayout_9")
         self.parametersLabel = QLabel(self.paramFrame)
         self.parametersLabel.setObjectName(u"parametersLabel")
-        sizePolicy4.setHeightForWidth(self.parametersLabel.sizePolicy().hasHeightForWidth())
-        self.parametersLabel.setSizePolicy(sizePolicy4)
+        sizePolicy5.setHeightForWidth(self.parametersLabel.sizePolicy().hasHeightForWidth())
+        self.parametersLabel.setSizePolicy(sizePolicy5)
         self.parametersLabel.setStyleSheet(u"QLabel {\n"
 "    font-size: 18px;\n"
 "    font-weight: bold;\n"
@@ -287,8 +292,8 @@ class Ui_modelSummary(object):
 
         self.parameters = QLabel(self.paramFrame)
         self.parameters.setObjectName(u"parameters")
-        sizePolicy4.setHeightForWidth(self.parameters.sizePolicy().hasHeightForWidth())
-        self.parameters.setSizePolicy(sizePolicy4)
+        sizePolicy5.setHeightForWidth(self.parameters.sizePolicy().hasHeightForWidth())
+        self.parameters.setSizePolicy(sizePolicy5)
         self.parameters.setStyleSheet(u"QLabel {\n"
 "    font-size: 18px;\n"
 "    font-weight: bold;\n"
@@ -304,8 +309,8 @@ class Ui_modelSummary(object):
 
         self.flopsFrame = QFrame(self.cardWidget)
         self.flopsFrame.setObjectName(u"flopsFrame")
-        sizePolicy3.setHeightForWidth(self.flopsFrame.sizePolicy().hasHeightForWidth())
-        self.flopsFrame.setSizePolicy(sizePolicy3)
+        sizePolicy4.setHeightForWidth(self.flopsFrame.sizePolicy().hasHeightForWidth())
+        self.flopsFrame.setSizePolicy(sizePolicy4)
         self.flopsFrame.setMinimumSize(QSize(220, 70))
         self.flopsFrame.setMaximumSize(QSize(16777215, 80))
         self.flopsFrame.setCursor(QCursor(Qt.CursorShape.ArrowCursor))
@@ -323,8 +328,8 @@ class Ui_modelSummary(object):
         self.verticalLayout_11.setObjectName(u"verticalLayout_11")
         self.flopsLabel = QLabel(self.flopsFrame)
         self.flopsLabel.setObjectName(u"flopsLabel")
-        sizePolicy4.setHeightForWidth(self.flopsLabel.sizePolicy().hasHeightForWidth())
-        self.flopsLabel.setSizePolicy(sizePolicy4)
+        sizePolicy5.setHeightForWidth(self.flopsLabel.sizePolicy().hasHeightForWidth())
+        self.flopsLabel.setSizePolicy(sizePolicy5)
         self.flopsLabel.setStyleSheet(u"QLabel {\n"
 "    font-size: 18px;\n"
 "    font-weight: bold;\n"
@@ -338,11 +343,11 @@ class Ui_modelSummary(object):
 
         self.flops = QLabel(self.flopsFrame)
         self.flops.setObjectName(u"flops")
-        sizePolicy5 = QSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Fixed)
-        sizePolicy5.setHorizontalStretch(0)
-        sizePolicy5.setVerticalStretch(0)
-        sizePolicy5.setHeightForWidth(self.flops.sizePolicy().hasHeightForWidth())
-        self.flops.setSizePolicy(sizePolicy5)
+        sizePolicy6 = QSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Fixed)
+        sizePolicy6.setHorizontalStretch(0)
+        sizePolicy6.setVerticalStretch(0)
+        sizePolicy6.setHeightForWidth(self.flops.sizePolicy().hasHeightForWidth())
+        self.flops.setSizePolicy(sizePolicy6)
         self.flops.setMinimumSize(QSize(200, 32))
         self.flops.setStyleSheet(u"QLabel {\n"
 "    font-size: 18px;\n"
@@ -380,11 +385,11 @@ class Ui_modelSummary(object):
 
         self.parametersPieChart = PieChartWidget(self.scrollAreaWidgetContents)
         self.parametersPieChart.setObjectName(u"parametersPieChart")
-        sizePolicy6 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        sizePolicy6.setHorizontalStretch(0)
-        sizePolicy6.setVerticalStretch(0)
-        sizePolicy6.setHeightForWidth(self.parametersPieChart.sizePolicy().hasHeightForWidth())
-        self.parametersPieChart.setSizePolicy(sizePolicy6)
+        sizePolicy7 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        sizePolicy7.setHorizontalStretch(0)
+        sizePolicy7.setVerticalStretch(0)
+        sizePolicy7.setHeightForWidth(self.parametersPieChart.sizePolicy().hasHeightForWidth())
+        self.parametersPieChart.setSizePolicy(sizePolicy7)
         self.parametersPieChart.setMinimumSize(QSize(300, 500))
 
         self.firstRowChartsLayout.addWidget(self.parametersPieChart)
@@ -397,23 +402,29 @@ class Ui_modelSummary(object):
         self.secondRowChartsLayout.setContentsMargins(-1, 20, -1, -1)
         self.similarityWidget = QWidget(self.scrollAreaWidgetContents)
         self.similarityWidget.setObjectName(u"similarityWidget")
-        sizePolicy.setHeightForWidth(self.similarityWidget.sizePolicy().hasHeightForWidth())
-        self.similarityWidget.setSizePolicy(sizePolicy)
+        sizePolicy7.setHeightForWidth(self.similarityWidget.sizePolicy().hasHeightForWidth())
+        self.similarityWidget.setSizePolicy(sizePolicy7)
+        self.similarityWidget.setMinimumSize(QSize(300, 500))
         self.placeholderWidget = QVBoxLayout(self.similarityWidget)
         self.placeholderWidget.setObjectName(u"placeholderWidget")
         self.similarityImg = ClickableLabel(self.similarityWidget)
         self.similarityImg.setObjectName(u"similarityImg")
-        sizePolicy.setHeightForWidth(self.similarityImg.sizePolicy().hasHeightForWidth())
-        self.similarityImg.setSizePolicy(sizePolicy)
+        sizePolicy8 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        sizePolicy8.setHorizontalStretch(0)
+        sizePolicy8.setVerticalStretch(0)
+        sizePolicy8.setHeightForWidth(self.similarityImg.sizePolicy().hasHeightForWidth())
+        self.similarityImg.setSizePolicy(sizePolicy8)
+        self.similarityImg.setMinimumSize(QSize(0, 0))
         self.similarityImg.setMaximumSize(QSize(16777215, 16777215))
+        self.similarityImg.setScaledContents(False)
         self.similarityImg.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.placeholderWidget.addWidget(self.similarityImg, 0, Qt.AlignmentFlag.AlignHCenter)
+        self.placeholderWidget.addWidget(self.similarityImg)
 
         self.similarityCorrelationStatic = QLabel(self.similarityWidget)
         self.similarityCorrelationStatic.setObjectName(u"similarityCorrelationStatic")
-        sizePolicy2.setHeightForWidth(self.similarityCorrelationStatic.sizePolicy().hasHeightForWidth())
-        self.similarityCorrelationStatic.setSizePolicy(sizePolicy2)
+        sizePolicy3.setHeightForWidth(self.similarityCorrelationStatic.sizePolicy().hasHeightForWidth())
+        self.similarityCorrelationStatic.setSizePolicy(sizePolicy3)
         self.similarityCorrelationStatic.setFont(font)
         self.similarityCorrelationStatic.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
@@ -421,8 +432,8 @@ class Ui_modelSummary(object):
 
         self.similarityCorrelation = QLabel(self.similarityWidget)
         self.similarityCorrelation.setObjectName(u"similarityCorrelation")
-        sizePolicy2.setHeightForWidth(self.similarityCorrelation.sizePolicy().hasHeightForWidth())
-        self.similarityCorrelation.setSizePolicy(sizePolicy2)
+        sizePolicy3.setHeightForWidth(self.similarityCorrelation.sizePolicy().hasHeightForWidth())
+        self.similarityCorrelation.setSizePolicy(sizePolicy3)
         palette = QPalette()
         brush = QBrush(QColor(0, 0, 0, 255))
         brush.setStyle(Qt.SolidPattern)
@@ -446,9 +457,6 @@ class Ui_modelSummary(object):
 
         self.flopsPieChart = PieChartWidget(self.scrollAreaWidgetContents)
         self.flopsPieChart.setObjectName(u"flopsPieChart")
-        sizePolicy7 = QSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Preferred)
-        sizePolicy7.setHorizontalStretch(0)
-        sizePolicy7.setVerticalStretch(0)
         sizePolicy7.setHeightForWidth(self.flopsPieChart.sizePolicy().hasHeightForWidth())
         self.flopsPieChart.setSizePolicy(sizePolicy7)
         self.flopsPieChart.setMinimumSize(QSize(300, 500))
@@ -462,19 +470,25 @@ class Ui_modelSummary(object):
         self.verticalLayout_20.addLayout(self.chartsLayout)
 
         self.thirdRowInputsLayout = QHBoxLayout()
+        self.thirdRowInputsLayout.setSpacing(6)
         self.thirdRowInputsLayout.setObjectName(u"thirdRowInputsLayout")
         self.thirdRowInputsLayout.setContentsMargins(20, 30, -1, -1)
         self.inputsLayout = QVBoxLayout()
         self.inputsLayout.setObjectName(u"inputsLayout")
         self.inputsLabel = QLabel(self.scrollAreaWidgetContents)
         self.inputsLabel.setObjectName(u"inputsLabel")
+        sizePolicy9 = QSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Maximum)
+        sizePolicy9.setHorizontalStretch(0)
+        sizePolicy9.setVerticalStretch(0)
+        sizePolicy9.setHeightForWidth(self.inputsLabel.sizePolicy().hasHeightForWidth())
+        self.inputsLabel.setSizePolicy(sizePolicy9)
         self.inputsLabel.setStyleSheet(u"QLabel {\n"
 "    font-size: 18px;\n"
 "    font-weight: bold;\n"
 "    background: transparent;\n"
 "}")
 
-        self.inputsLayout.addWidget(self.inputsLabel, 0, Qt.AlignmentFlag.AlignVCenter)
+        self.inputsLayout.addWidget(self.inputsLabel)
 
         self.inputsTable = QTableWidget(self.scrollAreaWidgetContents)
         if (self.inputsTable.columnCount() < 4):
@@ -488,11 +502,11 @@ class Ui_modelSummary(object):
         __qtablewidgetitem3 = QTableWidgetItem()
         self.inputsTable.setHorizontalHeaderItem(3, __qtablewidgetitem3)
         self.inputsTable.setObjectName(u"inputsTable")
-        sizePolicy8 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Preferred)
-        sizePolicy8.setHorizontalStretch(0)
-        sizePolicy8.setVerticalStretch(0)
-        sizePolicy8.setHeightForWidth(self.inputsTable.sizePolicy().hasHeightForWidth())
-        self.inputsTable.setSizePolicy(sizePolicy8)
+        sizePolicy10 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        sizePolicy10.setHorizontalStretch(1)
+        sizePolicy10.setVerticalStretch(0)
+        sizePolicy10.setHeightForWidth(self.inputsTable.sizePolicy().hasHeightForWidth())
+        self.inputsTable.setSizePolicy(sizePolicy10)
         self.inputsTable.setStyleSheet(u"QTableWidget {\n"
 "    gridline-color: #353535; /* Grid lines */\n"
 "    selection-background-color: #3949AB; /* Blue selection */\n"
@@ -543,18 +557,20 @@ class Ui_modelSummary(object):
         self.inputsTable.verticalHeader().setVisible(False)
         self.inputsTable.verticalHeader().setHighlightSections(True)
 
-        self.inputsLayout.addWidget(self.inputsTable, 0, Qt.AlignmentFlag.AlignVCenter)
+        self.inputsLayout.addWidget(self.inputsTable)
 
 
         self.thirdRowInputsLayout.addLayout(self.inputsLayout)
 
         self.freezeButton = QPushButton(self.scrollAreaWidgetContents)
         self.freezeButton.setObjectName(u"freezeButton")
-        sizePolicy9 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        sizePolicy9.setHorizontalStretch(0)
-        sizePolicy9.setVerticalStretch(0)
-        sizePolicy9.setHeightForWidth(self.freezeButton.sizePolicy().hasHeightForWidth())
-        self.freezeButton.setSizePolicy(sizePolicy9)
+        sizePolicy11 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        sizePolicy11.setHorizontalStretch(0)
+        sizePolicy11.setVerticalStretch(0)
+        sizePolicy11.setHeightForWidth(self.freezeButton.sizePolicy().hasHeightForWidth())
+        self.freezeButton.setSizePolicy(sizePolicy11)
+        self.freezeButton.setMinimumSize(QSize(0, 0))
+        self.freezeButton.setMaximumSize(QSize(16777215, 16777215))
         self.freezeButton.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.freezeButton.setStyleSheet(u"QPushButton {\n"
 "	color: white;\n"
@@ -580,7 +596,7 @@ class Ui_modelSummary(object):
         self.freezeButton.setIcon(icon)
         self.freezeButton.setIconSize(QSize(32, 32))
 
-        self.thirdRowInputsLayout.addWidget(self.freezeButton, 0, Qt.AlignmentFlag.AlignTop)
+        self.thirdRowInputsLayout.addWidget(self.freezeButton)
 
         self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
@@ -616,8 +632,11 @@ class Ui_modelSummary(object):
         __qtablewidgetitem7 = QTableWidgetItem()
         self.outputsTable.setHorizontalHeaderItem(3, __qtablewidgetitem7)
         self.outputsTable.setObjectName(u"outputsTable")
-        sizePolicy8.setHeightForWidth(self.outputsTable.sizePolicy().hasHeightForWidth())
-        self.outputsTable.setSizePolicy(sizePolicy8)
+        sizePolicy12 = QSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Expanding)
+        sizePolicy12.setHorizontalStretch(0)
+        sizePolicy12.setVerticalStretch(0)
+        sizePolicy12.setHeightForWidth(self.outputsTable.sizePolicy().hasHeightForWidth())
+        self.outputsTable.setSizePolicy(sizePolicy12)
         self.outputsTable.setStyleSheet(u"QTableWidget {\n"
 "    gridline-color: #353535; /* Grid lines */\n"
 "    selection-background-color: #3949AB; /* Blue selection */\n"
@@ -684,8 +703,8 @@ class Ui_modelSummary(object):
 
         self.sidePaneFrame = QFrame(modelSummary)
         self.sidePaneFrame.setObjectName(u"sidePaneFrame")
-        sizePolicy2.setHeightForWidth(self.sidePaneFrame.sizePolicy().hasHeightForWidth())
-        self.sidePaneFrame.setSizePolicy(sizePolicy2)
+        sizePolicy3.setHeightForWidth(self.sidePaneFrame.sizePolicy().hasHeightForWidth())
+        self.sidePaneFrame.setSizePolicy(sizePolicy3)
         self.sidePaneFrame.setMinimumSize(QSize(0, 0))
         self.sidePaneFrame.setStyleSheet(u"QFrame {\n"
 "   /*background: rgb(30,30,30);*/\n"
@@ -741,8 +760,8 @@ class Ui_modelSummary(object):
         __qtablewidgetitem21 = QTableWidgetItem()
         self.modelProtoTable.setItem(3, 1, __qtablewidgetitem21)
         self.modelProtoTable.setObjectName(u"modelProtoTable")
-        sizePolicy2.setHeightForWidth(self.modelProtoTable.sizePolicy().hasHeightForWidth())
-        self.modelProtoTable.setSizePolicy(sizePolicy2)
+        sizePolicy3.setHeightForWidth(self.modelProtoTable.sizePolicy().hasHeightForWidth())
+        self.modelProtoTable.setSizePolicy(sizePolicy3)
         self.modelProtoTable.setMinimumSize(QSize(0, 0))
         self.modelProtoTable.setMaximumSize(QSize(16777215, 100))
         self.modelProtoTable.setStyleSheet(u"QTableWidget::item {\n"
@@ -770,7 +789,7 @@ class Ui_modelSummary(object):
         self.modelProtoTable.verticalHeader().setMinimumSectionSize(20)
         self.modelProtoTable.verticalHeader().setDefaultSectionSize(20)
 
-        self.verticalLayout_3.addWidget(self.modelProtoTable, 0, Qt.AlignmentFlag.AlignRight)
+        self.verticalLayout_3.addWidget(self.modelProtoTable)
 
         self.importsLabel = QLabel(self.sidePaneFrame)
         self.importsLabel.setObjectName(u"importsLabel")
@@ -791,11 +810,8 @@ class Ui_modelSummary(object):
         __qtablewidgetitem23 = QTableWidgetItem()
         self.importsTable.setHorizontalHeaderItem(1, __qtablewidgetitem23)
         self.importsTable.setObjectName(u"importsTable")
-        sizePolicy10 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.MinimumExpanding)
-        sizePolicy10.setHorizontalStretch(0)
-        sizePolicy10.setVerticalStretch(0)
-        sizePolicy10.setHeightForWidth(self.importsTable.sizePolicy().hasHeightForWidth())
-        self.importsTable.setSizePolicy(sizePolicy10)
+        sizePolicy2.setHeightForWidth(self.importsTable.sizePolicy().hasHeightForWidth())
+        self.importsTable.setSizePolicy(sizePolicy2)
         self.importsTable.setStyleSheet(u"QTableWidget::item {\n"
 "    color: white;\n"
 "    padding: 5px;\n"

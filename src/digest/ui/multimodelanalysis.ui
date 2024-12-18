@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>908</width>
-    <height>647</height>
+    <width>1085</width>
+    <height>866</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -51,7 +51,7 @@
          <enum>QFrame::Shadow::Raised</enum>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_17">
-         <item alignment="Qt::AlignmentFlag::AlignTop">
+         <item>
           <widget class="QLabel" name="modelName">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -176,7 +176,7 @@
    <item>
     <widget class="QScrollArea" name="scrollArea">
      <property name="sizePolicy">
-      <sizepolicy hsizetype="Preferred" vsizetype="MinimumExpanding">
+      <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
@@ -198,8 +198,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>888</width>
-        <height>464</height>
+        <width>1065</width>
+        <height>688</height>
        </rect>
       </property>
       <property name="sizePolicy">
@@ -242,6 +242,12 @@
        </item>
        <item>
         <widget class="QFrame" name="frame_2">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="frameShape">
           <enum>QFrame::Shape::StyledPanel</enum>
          </property>
@@ -258,7 +264,7 @@
              <enum>QFrame::Shadow::Raised</enum>
             </property>
             <layout class="QVBoxLayout" name="verticalLayout_3">
-             <item alignment="Qt::AlignmentFlag::AlignTop">
+             <item>
               <widget class="HistogramChartWidget" name="opHistogramChart" native="true">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Fixed" vsizetype="Minimum">
@@ -279,17 +285,19 @@
           </item>
           <item>
            <widget class="QFrame" name="stackedHistogramFrame">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
             <property name="frameShape">
              <enum>QFrame::Shape::StyledPanel</enum>
             </property>
             <property name="frameShadow">
              <enum>QFrame::Shadow::Raised</enum>
             </property>
-            <layout class="QVBoxLayout" name="verticalLayout_5">
-             <item>
-              <layout class="QVBoxLayout" name="verticalLayout_4"/>
-             </item>
-            </layout>
+            <layout class="QVBoxLayout" name="verticalLayout_5"/>
            </widget>
           </item>
          </layout>
