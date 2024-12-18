@@ -278,8 +278,7 @@
           </font>
          </property>
          <property name="styleSheet">
-          <string notr="true">
-</string>
+          <string notr="true"/>
          </property>
          <property name="title">
           <string>Export Options</string>
@@ -466,7 +465,7 @@
              <string notr="true">color: lightgrey;</string>
             </property>
             <property name="text">
-             <string>The following inputs were taken from the PyTorch model's forward function. Please set the dimensions for each input needed. Dimensions can be set by specifying a combination of symbolic and integer values separated by a comma, for example: batch_size, 3, 224, 244.</string>
+             <string>The following inputs were taken from the PyTorch model's forward function. Please set the type and dimensions for each required input. Shape dimensions can be set by specifying a combination of symbolic and integer values separated by a comma, for example: batch_size, 3, 224, 244.</string>
             </property>
             <property name="wordWrap">
              <bool>true</bool>
@@ -478,6 +477,12 @@
           </item>
           <item>
            <layout class="QFormLayout" name="inputsFormLayout">
+            <property name="horizontalSpacing">
+             <number>10</number>
+            </property>
+            <property name="verticalSpacing">
+             <number>10</number>
+            </property>
             <property name="leftMargin">
              <number>20</number>
             </property>

@@ -56,7 +56,7 @@ class AnalysisThread(QThread):
                 model_proto = onnx_utils.load_onnx(file, False)
                 self.model_dict[file] = DigestOnnxModel(
                     model_proto,
-                    onnx_filepath=file,
+                    onnx_file_path=file,
                     model_name=model_name,
                     save_proto=False,
                 )

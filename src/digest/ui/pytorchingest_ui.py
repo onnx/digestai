@@ -286,6 +286,8 @@ class Ui_pytorchIngest(object):
 
         self.inputsFormLayout = QFormLayout()
         self.inputsFormLayout.setObjectName(u"inputsFormLayout")
+        self.inputsFormLayout.setHorizontalSpacing(10)
+        self.inputsFormLayout.setVerticalSpacing(10)
         self.inputsFormLayout.setContentsMargins(20, -1, -1, -1)
 
         self.verticalLayout_3.addLayout(self.inputsFormLayout)
@@ -351,7 +353,7 @@ class Ui_pytorchIngest(object):
         self.opsetInfoLabel.setText(QCoreApplication.translate("pytorchIngest", u"(accepted range is 7 - 21):", None))
         self.opsetLineEdit.setText(QCoreApplication.translate("pytorchIngest", u"17", None))
         self.inputsGroupBox.setTitle(QCoreApplication.translate("pytorchIngest", u"Inputs", None))
-        self.label.setText(QCoreApplication.translate("pytorchIngest", u"The following inputs were taken from the PyTorch model's forward function. Please set the dimensions for each input needed. Dimensions can be set by specifying a combination of symbolic and integer values separated by a comma, for example: batch_size, 3, 224, 244.", None))
+        self.label.setText(QCoreApplication.translate("pytorchIngest", u"The following inputs were taken from the PyTorch model's forward function. Please set the type and dimensions for each required input. Shape dimensions can be set by specifying a combination of symbolic and integer values separated by a comma, for example: batch_size, 3, 224, 244.", None))
         self.exportWarningLabel.setText(QCoreApplication.translate("pytorchIngest", u"<html><head/><body><p>This is a warning message that we can use for now to prompt the user.</p></body></html>", None))
         self.exportOnnxBtn.setText(QCoreApplication.translate("pytorchIngest", u"Export ONNX", None))
     # retranslateUi

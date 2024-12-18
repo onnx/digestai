@@ -10,7 +10,7 @@ import torch
 
 # pylint: disable=no-name-in-module
 from PySide6.QtTest import QTest
-from PySide6.QtCore import Qt, QTimer, QEventLoop
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication
 
 import digest.main
@@ -128,13 +128,13 @@ class DigestGuiTest(unittest.TestCase):
             pytorch_ingest = PyTorchIngest(pt_file_path, digest_model.model_name)
             pytorch_ingest.show()
 
-            input_shape_edit = pytorch_ingest.user_input_form.get_row_line_edit_widget(
-                0
+            input_shape_edit = (
+                pytorch_ingest.user_input_form.get_row_tensor_shape_widget(0)
             )
 
             assert input_shape_edit
             input_shape_edit.setText("batch_size, 3, 224, 224")
-            pytorch_ingest.update_input_shape()
+            pytorch_ingest.update_tensor_info()
 
             with patch(
                 "PySide6.QtWidgets.QFileDialog.getExistingDirectory"
