@@ -3,6 +3,7 @@
 import os
 from typing import List, Dict, Optional, Tuple, cast
 from datetime import datetime
+import importlib.metadata
 from collections import OrderedDict
 import yaml
 import numpy as np
@@ -519,9 +520,11 @@ class DigestOnnxModel(DigestModel):
 
         input_tensors = dict({k: vars(v) for k, v in self.model_inputs.items()})
         output_tensors = dict({k: vars(v) for k, v in self.model_outputs.items()})
+        digest_version = importlib.metadata.version("digestai")
 
         yaml_data = {
             "report_date": report_date,
+            "digest_version": digest_version,
             "model_type": self.model_type.value,
             "model_file": self.filepath,
             "model_name": self.model_name,
@@ -553,8 +556,11 @@ class DigestOnnxModel(DigestModel):
 
         report_date = datetime.now().strftime("%B %d, %Y")
 
+        digest_version = importlib.metadata.version("digestai")
+
         with open(filepath, "w", encoding="utf-8") as f_p:
             f_p.write(f"Report created on {report_date}\n")
+            f_p.write(f"Digest version: {digest_version}\n")
             f_p.write(f"Model type: {self.model_type.name}\n")
             if self.filepath:
                 f_p.write(f"ONNX file: {self.filepath}\n")
