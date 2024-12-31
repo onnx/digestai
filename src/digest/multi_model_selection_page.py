@@ -23,7 +23,7 @@ from digest.ui.multimodelselection_page_ui import Ui_MultiModelSelection
 from digest.multi_model_analysis import MultiModelAnalysis
 from digest.qt_utils import apply_dark_style_sheet, prompt_user_ram_limit
 from digest.model_class.digest_onnx_model import DigestOnnxModel
-from digest.model_class.digest_report_model import DigestReportModel
+from digest.model_class.digest_report_model import DigestReportModel, compare_yaml_files
 from utils import onnx_utils
 
 
@@ -203,7 +203,7 @@ class MultiModelSelectionPage(QWidget):
         else:
             return
 
-        progress = ProgressDialog("Searching Directory for ONNX Files", 0, self)
+        progress = ProgressDialog("Searching directory for model files", 0, self)
 
         onnx_file_list = list(
             glob.glob(os.path.join(directory, "**/*.onnx"), recursive=True)
@@ -227,11 +227,11 @@ class MultiModelSelectionPage(QWidget):
         serialized_models_paths: defaultdict[bytes, List[str]] = defaultdict(list)
 
         progress.close()
-        progress = ProgressDialog("Loading Models", total_num_models, self)
+        progress = ProgressDialog("Loading models", total_num_models, self)
 
         memory_limit_percentage = 90
         models_loaded = 0
-        for filepath in onnx_file_list:
+        for filepath in onnx_file_list + report_file_list:
             progress.step()
             if progress.user_canceled:
                 break
@@ -284,17 +284,38 @@ class MultiModelSelectionPage(QWidget):
                 self.ui.duplicateListWidget.addItem(paths[0])
                 for dupe in paths[1:]:
                     self.ui.duplicateListWidget.addItem(f"- Duplicate: {dupe}")
-                item = QStandardItem(paths[0])
-                item.setCheckable(True)
-                item.setCheckState(Qt.CheckState.Checked)
-                self.item_model.appendRow(item)
-            else:
-                item = QStandardItem(paths[0])
-                item.setCheckable(True)
-                item.setCheckState(Qt.CheckState.Checked)
-                self.item_model.appendRow(item)
+            item = QStandardItem(paths[0])
+            item.setCheckable(True)
+            item.setCheckState(Qt.CheckState.Checked)
+            self.item_model.appendRow(item)
 
-        for path in report_file_list:
+        # Use a standard nested loop to detect duplicate reports
+        duplicate_reports: Dict[str, List[str]] = {}
+        processed_files = set()
+        for i in range(len(report_file_list)):
+            progress.step()
+            if progress.user_canceled:
+                break
+            path1 = report_file_list[i]
+            if path1 in processed_files:
+                continue  # Skip already processed files
+
+            # We will use path1 as the unique model and save a list of duplicates
+            duplicate_reports[path1] = []
+            for j in range(i + 1, len(report_file_list)):
+                path2 = report_file_list[j]
+                if compare_yaml_files(
+                    path1, path2, ["report_date", "model_files", "digest_version"]
+                ):
+                    num_duplicates += 1
+                    duplicate_reports[path1].append(path2)
+                    processed_files.add(path2)
+
+        for path, dupes in duplicate_reports.items():
+            if dupes:
+                self.ui.duplicateListWidget.addItem(path)
+                for dupe in dupes:
+                    self.ui.duplicateListWidget.addItem(f"- Duplicate: {dupe}")
             item = QStandardItem(path)
             item.setCheckable(True)
             item.setCheckState(Qt.CheckState.Checked)

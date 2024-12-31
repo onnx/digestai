@@ -101,7 +101,13 @@ class MultiModelAnalysis(QWidget):
         self.ui.dataTable.resizeColumnsToContents()
         self.ui.dataTable.resizeRowsToContents()
 
-        node_type_counter = {}
+        # Until we use the unique_id to represent the model contents we store
+        # the entire model as the key so that we can store models that happen to have
+        # the same name. There is a guarantee that the models will not be duplicates.
+        node_type_counter: Dict[
+            Union[DigestOnnxModel, DigestReportModel], NodeTypeCounts
+        ] = {}
+
         for i, digest_model in enumerate(model_list):
             progress.step()
             progress.setLabelText(f"Analyzing model {digest_model.model_name}")
@@ -143,26 +149,18 @@ class MultiModelAnalysis(QWidget):
                 "flops": digest_model.flops,
             }
 
-            # Here we are creating a name that is a combination of the model name
-            # and the model type.
-            node_type_counter_key = (
-                f"{digest_model.model_name}-{digest_model.model_type.value}"
-            )
-
-            if node_type_counter_key in node_type_counter:
+            if digest_model in node_type_counter:
                 print(
                     f"Warning! {digest_model.model_name} with model type "
-                    f"{digest_model.model_type.value} has already been added to "
-                    "to the stacked histogram, skipping."
+                    f"{digest_model.model_type.value} and id {digest_model.unique_id} "
+                    "has already been added to the stacked histogram, skipping."
                 )
                 continue
 
-            node_type_counter[node_type_counter_key] = digest_model.node_type_counts
+            node_type_counter[digest_model] = digest_model.node_type_counts
 
             # Update global data structure for node type counter
-            self.global_node_type_counter.update(
-                node_type_counter[node_type_counter_key]
-            )
+            self.global_node_type_counter.update(node_type_counter[digest_model])
 
             node_shape_counts = digest_model.get_node_shape_counts()
 
@@ -180,20 +178,20 @@ class MultiModelAnalysis(QWidget):
         # Create stacked op histograms
         max_count = 0
         top_ops = [key for key, _ in self.global_node_type_counter.most_common(20)]
-        for model_name, _ in node_type_counter.items():
-            max_local = Counter(node_type_counter[model_name]).most_common()[0][1]
+        for model, _ in node_type_counter.items():
+            max_local = Counter(node_type_counter[model]).most_common()[0][1]
             if max_local > max_count:
                 max_count = max_local
-        for idx, model_name in enumerate(node_type_counter):
+        for idx, model in enumerate(node_type_counter):
             stacked_histogram_widget = StackedHistogramWidget()
             ordered_dict = OrderedDict()
-            model_counter = Counter(node_type_counter[model_name])
+            model_counter = Counter(node_type_counter[model])
             for key in top_ops:
                 ordered_dict[key] = model_counter.get(key, 0)
             title = "Stacked Op Histogram" if idx == 0 else ""
             stacked_histogram_widget.set_data(
                 ordered_dict,
-                model_name=model_name,
+                model_name=model.model_name,
                 y_max=max_count,
                 title=title,
                 set_ticks=False,

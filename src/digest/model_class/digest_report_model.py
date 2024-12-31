@@ -3,7 +3,7 @@ from collections import OrderedDict
 import csv
 import ast
 import re
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List, Dict, Any, Union
 import yaml
 from digest.model_class.digest_model import (
     DigestModel,
@@ -15,7 +15,9 @@ from digest.model_class.digest_model import (
 )
 
 
-def parse_tensor_info(csv_tensor_cell_value) -> Tuple[str, list, str, float]:
+def parse_tensor_info(
+    csv_tensor_cell_value,
+) -> Tuple[str, list, str, Union[str, float]]:
     """This is a helper function that expects the input to come from parsing
     the nodes csv and extracting either an input or output tensor."""
 
@@ -38,7 +40,10 @@ def parse_tensor_info(csv_tensor_cell_value) -> Tuple[str, list, str, float]:
     if not isinstance(shape, list):
         shape = list(shape)
 
-    return name.strip(), shape, dtype.strip(), float(size.split()[0])
+    if size != "None":
+        size = float(size.split()[0])
+
+    return name.strip(), shape, dtype.strip(), size
 
 
 class DigestReportModel(DigestModel):
@@ -49,7 +54,7 @@ class DigestReportModel(DigestModel):
 
         self.model_type = SupportedModelTypes.REPORT
 
-        self.is_valid = self.validate_yaml(report_filepath)
+        self.is_valid = validate_yaml(report_filepath)
 
         if not self.is_valid:
             print(f"The yaml file {report_filepath} is not a valid digest report.")
@@ -131,41 +136,6 @@ class DigestReportModel(DigestModel):
             }
         )
 
-    def validate_yaml(self, report_file_path: str) -> bool:
-        """Check that the provided yaml file is indeed a Digest Report file."""
-        expected_keys = [
-            "report_date",
-            "model_file",
-            "model_type",
-            "model_name",
-            "flops",
-            "node_type_flops",
-            "node_type_parameters",
-            "node_type_counts",
-            "input_tensors",
-            "output_tensors",
-        ]
-        try:
-            with open(report_file_path, "r", encoding="utf-8") as file:
-                yaml_content = yaml.safe_load(file)
-
-            if not isinstance(yaml_content, dict):
-                print("Error: YAML content is not a dictionary")
-                return False
-
-            for key in expected_keys:
-                if key not in yaml_content:
-                    # print(f"Error: Missing required key '{key}'")
-                    return False
-
-            return True
-        except yaml.YAMLError as _:
-            # print(f"Error parsing YAML file: {e}")
-            return False
-        except IOError as _:
-            # print(f"Error reading file: {e}")
-            return False
-
     def parse_model_nodes(self) -> None:
         """There are no model nodes to parse"""
 
@@ -174,3 +144,97 @@ class DigestReportModel(DigestModel):
 
     def save_text_report(self, filepath: str) -> None:
         """Report models are not intended to be saved"""
+
+
+def validate_yaml(report_file_path: str) -> bool:
+    """Check that the provided yaml file is indeed a Digest Report file."""
+    expected_keys = [
+        "report_date",
+        "model_file",
+        "model_type",
+        "model_name",
+        "flops",
+        "node_type_flops",
+        "node_type_parameters",
+        "node_type_counts",
+        "input_tensors",
+        "output_tensors",
+    ]
+    try:
+        with open(report_file_path, "r", encoding="utf-8") as file:
+            yaml_content = yaml.safe_load(file)
+
+        if not isinstance(yaml_content, dict):
+            print("Error: YAML content is not a dictionary")
+            return False
+
+        for key in expected_keys:
+            if key not in yaml_content:
+                # print(f"Error: Missing required key '{key}'")
+                return False
+
+        return True
+    except yaml.YAMLError as _:
+        # print(f"Error parsing YAML file: {e}")
+        return False
+    except IOError as _:
+        # print(f"Error reading file: {e}")
+        return False
+
+
+def compare_yaml_files(
+    file1: str, file2: str, skip_keys: Optional[List[str]] = None
+) -> bool:
+    """
+    Compare two YAML files, ignoring specified keys.
+
+    :param file1: Path to the first YAML file
+    :param file2: Path to the second YAML file
+    :param skip_keys: List of keys to ignore in the comparison
+    :return: True if the files are equal (ignoring specified keys), False otherwise
+    """
+
+    def load_yaml(file_path: str) -> Dict[str, Any]:
+        with open(file_path, "r", encoding="utf-8") as file:
+            return yaml.safe_load(file)
+
+    def compare_dicts(
+        dict1: Dict[str, Any], dict2: Dict[str, Any], path: str = ""
+    ) -> List[str]:
+        differences = []
+        all_keys = set(dict1.keys()) | set(dict2.keys())
+
+        for key in all_keys:
+            if skip_keys and key in skip_keys:
+                continue
+
+            current_path = f"{path}.{key}" if path else key
+
+            if key not in dict1:
+                differences.append(f"Key '{current_path}' is missing in the first file")
+            elif key not in dict2:
+                differences.append(
+                    f"Key '{current_path}' is missing in the second file"
+                )
+            elif isinstance(dict1[key], dict) and isinstance(dict2[key], dict):
+                differences.extend(compare_dicts(dict1[key], dict2[key], current_path))
+            elif dict1[key] != dict2[key]:
+                differences.append(
+                    f"Value mismatch for key '{current_path}': {dict1[key]} != {dict2[key]}"
+                )
+
+        return differences
+
+    yaml1 = load_yaml(file1)
+    yaml2 = load_yaml(file2)
+
+    differences = compare_dicts(yaml1, yaml2)
+
+    if differences:
+        # print("Differences found:")
+        # for diff in differences:
+        #     print(f"- {diff}")
+        return False
+    else:
+        # print("No differences found.")
+        return True
