@@ -983,45 +983,56 @@ class DigestApp(QMainWindow):
             save_directory, str(digest_model.model_name) + "_reports"
         )
 
-        os.makedirs(save_directory, exist_ok=True)
+        try:
+            os.makedirs(save_directory, exist_ok=True)
 
-        # Save the node histogram image
-        node_histogram = current_tab.ui.opHistogramChart.grab()
-        node_histogram.save(
-            os.path.join(save_directory, f"{model_name}_histogram.png"), "PNG"
-        )
+            # Save the node histogram image
+            node_histogram = current_tab.ui.opHistogramChart.grab()
+            node_histogram.save(
+                os.path.join(save_directory, f"{model_name}_histogram.png"), "PNG"
+            )
 
-        # Save csv of node type counts
-        node_type_filepath = os.path.join(
-            save_directory, f"{model_name}_node_type_counts.csv"
-        )
-        digest_model.save_node_type_counts_csv_report(node_type_filepath)
+            # Save csv of node type counts
+            node_type_filepath = os.path.join(
+                save_directory, f"{model_name}_node_type_counts.csv"
+            )
+            digest_model.save_node_type_counts_csv_report(node_type_filepath)
 
-        # Save (copy) the similarity image
-        png_file_path = self.model_similarity_thread[
-            digest_model.unique_id
-        ].png_filepath
-        png_save_path = os.path.join(save_directory, f"{model_name}_heatmap.png")
-        if png_file_path and os.path.exists(png_file_path):
-            shutil.copy(png_file_path, png_save_path)
+            # Save (copy) the similarity image
+            png_file_path = self.model_similarity_thread[
+                digest_model.unique_id
+            ].png_filepath
+            png_save_path = os.path.join(save_directory, f"{model_name}_heatmap.png")
+            if png_file_path and os.path.exists(png_file_path):
+                shutil.copy(png_file_path, png_save_path)
 
-        # Save the text report
-        txt_report_filepath = os.path.join(save_directory, f"{model_name}_report.txt")
-        digest_model.save_text_report(txt_report_filepath)
+            # Save the text report
+            txt_report_filepath = os.path.join(
+                save_directory, f"{model_name}_report.txt"
+            )
+            digest_model.save_text_report(txt_report_filepath)
 
-        # Save the yaml report
-        yaml_report_filepath = os.path.join(save_directory, f"{model_name}_report.yaml")
-        digest_model.save_yaml_report(yaml_report_filepath)
+            # Save the yaml report
+            yaml_report_filepath = os.path.join(
+                save_directory, f"{model_name}_report.yaml"
+            )
+            digest_model.save_yaml_report(yaml_report_filepath)
 
-        # Save the node list
-        nodes_report_filepath = os.path.join(save_directory, f"{model_name}_nodes.csv")
-        self.save_nodes_csv(nodes_report_filepath, False)
+            # Save the node list
+            nodes_report_filepath = os.path.join(
+                save_directory, f"{model_name}_nodes.csv"
+            )
 
-        self.status_dialog = StatusDialog(
-            f"Saved reports to: \n{os.path.abspath(save_directory)}",
-            "Successfully saved reports!",
-        )
-        self.status_dialog.show()
+            self.save_nodes_csv(nodes_report_filepath, False)
+        except Exception as exception:  # pylint: disable=broad-exception-caught
+            self.status_dialog = StatusDialog(f"{exception}")
+            self.status_dialog.show()
+        else:
+            self.status_dialog = StatusDialog(
+                f"Saved reports to: \n{os.path.abspath(save_directory)}",
+                "Successfully saved reports!",
+            )
+            self.status_dialog.show()
 
     def on_dialog_closed(self):
         self.infoDialog = None

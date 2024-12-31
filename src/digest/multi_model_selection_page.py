@@ -192,7 +192,7 @@ class MultiModelSelectionPage(QWidget):
 
     def set_directory(self, directory: str):
         """
-        Recursively searches a directory for onnx models.
+        Recursively searches a directory for onnx models and yaml report files.
         """
 
         if not os.path.exists(directory):
@@ -237,9 +237,12 @@ class MultiModelSelectionPage(QWidget):
                 break
             try:
                 models_loaded += 1
-                if os.path.splitext(filepath)[-1] == ".onnx":
+                extension = os.path.splitext(filepath)[-1]
+                if extension == ".onnx":
                     model = onnx.load(filepath, load_external_data=False)
                     serialized_models_paths[model.SerializeToString()].append(filepath)
+                elif extension == ".yaml":
+                    pass
                 dialog_msg = (
                     "Warning: System RAM has exceeded the threshold of "
                     f"{memory_limit_percentage}%. No further models will be loaded. "

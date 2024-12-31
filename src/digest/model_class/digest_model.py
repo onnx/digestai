@@ -185,10 +185,15 @@ def save_nodes_csv_report(node_data: NodeData, filepath: str) -> None:
         flattened_data.append(row)
 
     fieldnames = fieldnames + input_fieldnames + output_fieldnames
-    with open(filepath, "w", encoding="utf-8", newline="") as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames, lineterminator="\n")
-        writer.writeheader()
-        writer.writerows(flattened_data)
+    try:
+        with open(filepath, "w", encoding="utf-8", newline="") as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames, lineterminator="\n")
+            writer.writeheader()
+            writer.writerows(flattened_data)
+    except PermissionError as exception:
+        raise PermissionError(
+            f"Saving reports to {filepath} failed with error {exception}"
+        )
 
 
 def save_node_type_counts_csv_report(
