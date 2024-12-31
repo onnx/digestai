@@ -201,7 +201,6 @@ class MultiModelAnalysis(QWidget):
                 frame_layout.addWidget(stacked_histogram_widget)
 
         # Add a "ghost" histogram to allow us to set the x axis label vertically
-        model_name = list(node_type_counter.keys())[0]
         stacked_histogram_widget = StackedHistogramWidget()
         ordered_dict = OrderedDict({key: 1 for key in top_ops})
         stacked_histogram_widget.set_data(
