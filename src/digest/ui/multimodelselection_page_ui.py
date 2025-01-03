@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'multimodelselection_page.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.8.0
+## Created by: Qt User Interface Compiler version 6.8.1
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -15,9 +15,9 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QHBoxLayout,
-    QLabel, QListView, QListWidget, QListWidgetItem,
-    QPushButton, QSizePolicy, QSpacerItem, QVBoxLayout,
+from PySide6.QtWidgets import (QAbstractItemView, QApplication, QHBoxLayout, QLabel,
+    QListView, QListWidget, QListWidgetItem, QPushButton,
+    QRadioButton, QSizePolicy, QSpacerItem, QVBoxLayout,
     QWidget)
 
 class Ui_MultiModelSelection(object):
@@ -59,7 +59,7 @@ class Ui_MultiModelSelection(object):
         self.selectFolderBtn.setSizePolicy(sizePolicy)
         self.selectFolderBtn.setStyleSheet(u"")
 
-        self.horizontalLayout_2.addWidget(self.selectFolderBtn, 0, Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignVCenter)
+        self.horizontalLayout_2.addWidget(self.selectFolderBtn)
 
         self.openAnalysisBtn = QPushButton(MultiModelSelection)
         self.openAnalysisBtn.setObjectName(u"openAnalysisBtn")
@@ -68,7 +68,7 @@ class Ui_MultiModelSelection(object):
         self.openAnalysisBtn.setSizePolicy(sizePolicy)
         self.openAnalysisBtn.setStyleSheet(u"")
 
-        self.horizontalLayout_2.addWidget(self.openAnalysisBtn, 0, Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignVCenter)
+        self.horizontalLayout_2.addWidget(self.openAnalysisBtn)
 
         self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
@@ -104,32 +104,63 @@ class Ui_MultiModelSelection(object):
 
         self.horizontalLayout_3 = QHBoxLayout()
         self.horizontalLayout_3.setObjectName(u"horizontalLayout_3")
-        self.selectAllBox = QCheckBox(MultiModelSelection)
-        self.selectAllBox.setObjectName(u"selectAllBox")
-        sizePolicy.setHeightForWidth(self.selectAllBox.sizePolicy().hasHeightForWidth())
-        self.selectAllBox.setSizePolicy(sizePolicy)
-        self.selectAllBox.setMinimumSize(QSize(0, 33))
-        self.selectAllBox.setAutoFillBackground(False)
-        self.selectAllBox.setStyleSheet(u"")
+        self.radioAll = QRadioButton(MultiModelSelection)
+        self.radioAll.setObjectName(u"radioAll")
+        sizePolicy.setHeightForWidth(self.radioAll.sizePolicy().hasHeightForWidth())
+        self.radioAll.setSizePolicy(sizePolicy)
+        self.radioAll.setMinimumSize(QSize(0, 33))
+        self.radioAll.setAutoFillBackground(False)
+        self.radioAll.setStyleSheet(u"")
+        self.radioAll.setChecked(True)
 
-        self.horizontalLayout_3.addWidget(self.selectAllBox)
+        self.horizontalLayout_3.addWidget(self.radioAll)
+
+        self.radioONNX = QRadioButton(MultiModelSelection)
+        self.radioONNX.setObjectName(u"radioONNX")
+        sizePolicy.setHeightForWidth(self.radioONNX.sizePolicy().hasHeightForWidth())
+        self.radioONNX.setSizePolicy(sizePolicy)
+        self.radioONNX.setMinimumSize(QSize(0, 33))
+        self.radioONNX.setAutoFillBackground(False)
+        self.radioONNX.setStyleSheet(u"")
+
+        self.horizontalLayout_3.addWidget(self.radioONNX)
+
+        self.radioReports = QRadioButton(MultiModelSelection)
+        self.radioReports.setObjectName(u"radioReports")
+        sizePolicy.setHeightForWidth(self.radioReports.sizePolicy().hasHeightForWidth())
+        self.radioReports.setSizePolicy(sizePolicy)
+        self.radioReports.setMinimumSize(QSize(0, 33))
+        self.radioReports.setAutoFillBackground(False)
+        self.radioReports.setStyleSheet(u"")
+
+        self.horizontalLayout_3.addWidget(self.radioReports)
+
+        self.duplicateLabel = QLabel(MultiModelSelection)
+        self.duplicateLabel.setObjectName(u"duplicateLabel")
+        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        sizePolicy2.setHorizontalStretch(0)
+        sizePolicy2.setVerticalStretch(0)
+        sizePolicy2.setHeightForWidth(self.duplicateLabel.sizePolicy().hasHeightForWidth())
+        self.duplicateLabel.setSizePolicy(sizePolicy2)
+        self.duplicateLabel.setMinimumSize(QSize(550, 0))
+        self.duplicateLabel.setStyleSheet(u"")
+        self.duplicateLabel.setWordWrap(True)
+
+        self.horizontalLayout_3.addWidget(self.duplicateLabel)
+
+        self.horizontalSpacer_2 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.horizontalLayout_3.addItem(self.horizontalSpacer_2)
+
+
+        self.verticalLayout.addLayout(self.horizontalLayout_3)
 
         self.numSelectedLabel = QLabel(MultiModelSelection)
         self.numSelectedLabel.setObjectName(u"numSelectedLabel")
         self.numSelectedLabel.setStyleSheet(u"")
         self.numSelectedLabel.setWordWrap(True)
 
-        self.horizontalLayout_3.addWidget(self.numSelectedLabel)
-
-        self.duplicateLabel = QLabel(MultiModelSelection)
-        self.duplicateLabel.setObjectName(u"duplicateLabel")
-        self.duplicateLabel.setStyleSheet(u"")
-        self.duplicateLabel.setWordWrap(True)
-
-        self.horizontalLayout_3.addWidget(self.duplicateLabel)
-
-
-        self.verticalLayout.addLayout(self.horizontalLayout_3)
+        self.verticalLayout.addWidget(self.numSelectedLabel)
 
         self.columnsLayout = QHBoxLayout()
         self.columnsLayout.setObjectName(u"columnsLayout")
@@ -151,11 +182,11 @@ class Ui_MultiModelSelection(object):
         self.rightColumnLayout.setObjectName(u"rightColumnLayout")
         self.duplicateListWidget = QListWidget(MultiModelSelection)
         self.duplicateListWidget.setObjectName(u"duplicateListWidget")
-        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        sizePolicy2.setHorizontalStretch(0)
-        sizePolicy2.setVerticalStretch(0)
-        sizePolicy2.setHeightForWidth(self.duplicateListWidget.sizePolicy().hasHeightForWidth())
-        self.duplicateListWidget.setSizePolicy(sizePolicy2)
+        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        sizePolicy3.setHorizontalStretch(0)
+        sizePolicy3.setVerticalStretch(0)
+        sizePolicy3.setHeightForWidth(self.duplicateListWidget.sizePolicy().hasHeightForWidth())
+        self.duplicateListWidget.setSizePolicy(sizePolicy3)
         self.duplicateListWidget.setStyleSheet(u"")
         self.duplicateListWidget.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.duplicateListWidget.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
@@ -184,9 +215,11 @@ class Ui_MultiModelSelection(object):
         self.selectFolderBtn.setText(QCoreApplication.translate("MultiModelSelection", u"Select Folder", None))
         self.openAnalysisBtn.setText(QCoreApplication.translate("MultiModelSelection", u"Open Analysis", None))
         self.infoLabel.setText("")
-        self.warningLabel.setText(QCoreApplication.translate("MultiModelSelection", u"Warning: The chosen folder contains more than MAX_ONNX_MODELS", None))
-        self.selectAllBox.setText(QCoreApplication.translate("MultiModelSelection", u"Select All", None))
-        self.numSelectedLabel.setText(QCoreApplication.translate("MultiModelSelection", u"0 selected models", None))
+        self.warningLabel.setText(QCoreApplication.translate("MultiModelSelection", u"Warning", None))
+        self.radioAll.setText(QCoreApplication.translate("MultiModelSelection", u"All", None))
+        self.radioONNX.setText(QCoreApplication.translate("MultiModelSelection", u"ONNX", None))
+        self.radioReports.setText(QCoreApplication.translate("MultiModelSelection", u"Reports", None))
         self.duplicateLabel.setText(QCoreApplication.translate("MultiModelSelection", u"The following models were found to be duplicates and have been deselected from the list on the left.", None))
+        self.numSelectedLabel.setText(QCoreApplication.translate("MultiModelSelection", u"0 selected models", None))
     # retranslateUi
 

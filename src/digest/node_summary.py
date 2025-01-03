@@ -6,6 +6,10 @@ import os
 from PySide6.QtWidgets import QWidget, QTableWidgetItem, QFileDialog
 from digest.ui.nodessummary_ui import Ui_nodesSummary
 from digest.qt_utils import apply_dark_style_sheet
+from digest.model_class.digest_model import (
+    save_node_shape_counts_csv_report,
+    save_nodes_csv_report,
+)
 from utils import onnx_utils
 
 ROOT_FOLDER = os.path.dirname(__file__)
@@ -111,8 +115,6 @@ class NodeSummary(QWidget):
             self, "Save CSV", os.getcwd(), "CSV(*.csv)"
         )
         if filepath and self.ui.allNodesBtn.isChecked():
-            onnx_utils.save_nodes_csv_report(self.node_data, filepath)
+            save_nodes_csv_report(self.node_data, filepath)
         elif filepath and self.ui.shapeCountsBtn.isChecked():
-            onnx_utils.save_node_shape_counts_csv_report(
-                self.node_shape_counts, filepath
-            )
+            save_node_shape_counts_csv_report(self.node_shape_counts, filepath)

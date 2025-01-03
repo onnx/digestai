@@ -1,5 +1,5 @@
-Report created on June 02, 2024
-ONNX file: resnet18.onnx
+Report created on December 06, 2024
+ONNX file: C:\Users\pcolange\Projects\digestai\test\resnet18.onnx
 Name of the model: resnet18
 Model version: 0
 Name of the graph: main_graph
@@ -9,6 +9,13 @@ Opset: 17
 
 Import list
 	: 17
+	ai.onnx.ml: 5
+	ai.onnx.preview.training: 1
+	ai.onnx.training: 1
+	com.microsoft: 1
+	com.microsoft.experimental: 1
+	com.microsoft.nchwc: 1
+	org.pytorch.aten: 1
 
 Total graph nodes: 49
 Number of parameters: 11684712

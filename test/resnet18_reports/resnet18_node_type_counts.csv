@@ -1,0 +1,8 @@
+Node Type,Count
+Conv,20
+Relu,17
+Add,8
+MaxPool,1
+GlobalAveragePool,1
+Flatten,1
+Gemm,1
