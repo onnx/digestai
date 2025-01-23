@@ -2,4 +2,4 @@
 # For EXE releases we can block certain features e.g. to customers
 
 modules: 
-    huggingface: true
+    huggingface: false

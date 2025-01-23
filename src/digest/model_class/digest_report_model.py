@@ -138,12 +138,15 @@ class DigestReportModel(DigestModel):
 
     def parse_model_nodes(self) -> None:
         """There are no model nodes to parse"""
+        return
 
     def save_yaml_report(self, filepath: str) -> None:
         """Report models are not intended to be saved"""
+        return
 
     def save_text_report(self, filepath: str) -> None:
         """Report models are not intended to be saved"""
+        return
 
 
 def validate_yaml(report_file_path: str) -> bool:
@@ -231,10 +234,6 @@ def compare_yaml_files(
     differences = compare_dicts(yaml1, yaml2)
 
     if differences:
-        # print("Differences found:")
-        # for diff in differences:
-        #     print(f"- {diff}")
         return False
     else:
-        # print("No differences found.")
         return True

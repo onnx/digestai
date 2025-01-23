@@ -8,6 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 
 DigestAI
 ===========================
+
 <h3>DigestAI is a powerful model analysis tool that extracts insights from your models, enabling optimization and direct modification.</h3>
 
 [![python](https://img.shields.io/badge/python-3.10-blue)](https://github.com/onnx/digestai)
@@ -16,11 +17,12 @@ DigestAI
 
 ![logo](src/digest/assets/images/banner.png)
 ---
+
 <div align="left">
 
 DigestAI is a powerful model analysis tool that extracts insights from your models, enabling optimization and direct modification.
 
-**Get started quickly!** Download the DigestAI installer directly from [link to download page].
+**Get started quickly!** Download the DigestAI executable directly from [link coming soon].
 
 **Developers: Contribute to DigestAI** Follow the installation instruction below to get started.
 
@@ -65,19 +67,18 @@ The following steps are recommended because they are reproducible, however, ther
 **Workflow**
 
 1. **Open Qt Designer:**
-   - **Activate Conda Environment:**  Ensure your `digest` Conda environment is activated.
-   - **Launch:** Run `pyside6-designer.exe` from your terminal.
+   * **Activate Conda Environment:**  Ensure your `digest` Conda environment is activated.
+   * **Launch:** Run `pyside6-designer.exe` from your terminal.
 
 2. **Work with UI Files:**
-   - Open any existing UI file (`.ui`) from `src/digest/ui`.
-   - Design your interface using the drag-and-drop tools and property editor.
-   - Resource Files (Optional): If your UI uses custom icons, images, or stylesheets, please leverage the Qt resource file (`.qrc`). This makes it easier to manage and package resources with the application.
-   - Please add any new `.ui` files to the `.pylintrc` file.
+   * Open any existing UI file (`.ui`) from `src/digest/ui`.
+   * Design your interface using the drag-and-drop tools and property editor.
+   * Resource Files (Optional): If your UI uses custom icons, images, or stylesheets, please leverage the Qt resource file (`.qrc`). This makes it easier to manage and package resources with the application.
+   * Please add any new `.ui` files to the `.pylintrc` file.
 
 3. **Recompile UI Files (After Making Changes):**
-   - From your terminal, navigate to the project's root directory.
-   - Run: `python src/digest/compile_digest_gui.py`
-
+   * From your terminal, navigate to the project's root directory.
+   * Run: `python src/digest/compile_digest_gui.py`
 
 ## Building EXE for Windows Deployment
 
@@ -114,8 +115,9 @@ pytest test/test_gui.py
 ```
 
 ## License
+
 This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE.txt) file for details.
 
-
 ## Copyright
+
 Copyright(C) 2024 Advanced Micro Devices, Inc. All rights reserved.

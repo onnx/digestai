@@ -93,7 +93,14 @@ class MultiModelSelectionPage(QWidget):
         self.ui.radioONNX.toggled.connect(self.update_list_view_items)
         self.ui.radioReports.toggled.connect(self.update_list_view_items)
         self.ui.selectFolderBtn.clicked.connect(self.openFolder)
+
+        # We want to retain the size when the duplicate label
+        # is hidden to keep the two list columns even.
+        policy = self.ui.duplicateLabel.sizePolicy()
+        policy.setRetainSizeWhenHidden(True)
+        self.ui.duplicateLabel.setSizePolicy(policy)
         self.ui.duplicateLabel.hide()
+
         self.ui.modelListView.setModel(self.item_model)
         self.ui.modelListView.setContextMenuPolicy(
             Qt.ContextMenuPolicy.CustomContextMenu
@@ -324,10 +331,7 @@ class MultiModelSelectionPage(QWidget):
         progress.close()
 
         if num_duplicates:
-            label_text = (
-                f"The following {num_duplicates} models were found to be "
-                "duplicates and have been deselected from the list on the left."
-            )
+            label_text = f"Ignoring {num_duplicates} duplicate model(s)."
             self.ui.duplicateLabel.setText(label_text)
             self.ui.duplicateLabel.show()
         else:
