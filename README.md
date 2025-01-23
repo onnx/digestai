@@ -22,7 +22,9 @@ DigestAI
 
 DigestAI is a powerful model analysis tool that extracts insights from your models, enabling optimization and direct modification.
 
+
 **Get started quickly!** Download the DigestAI executable directly from [link coming soon].
+
 
 **Developers: Contribute to DigestAI** Follow the installation instruction below to get started.
 
