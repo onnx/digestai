@@ -6,14 +6,16 @@ import glob
 import csv
 from collections import Counter, defaultdict
 from tqdm import tqdm
+from digest.model_class.digest_model import (
+    NodeShapeCounts,
+    NodeTypeCounts,
+    save_node_shape_counts_csv_report,
+    save_node_type_counts_csv_report,
+)
+from digest.model_class.digest_onnx_model import DigestOnnxModel
 from utils.onnx_utils import (
     get_dynamic_input_dims,
     load_onnx,
-    DigestOnnxModel,
-    save_node_shape_counts_csv_report,
-    save_node_type_counts_csv_report,
-    NodeTypeCounts,
-    NodeShapeCounts,
 )
 
 GLOBAL_MODEL_HEADERS = [
@@ -82,46 +84,46 @@ def main(onnx_files: str, output_dir: str):
 
         global_model_data[model_name] = {
             "opset": digest_model.opset,
-            "parameters": digest_model.model_parameters,
-            "flops": digest_model.model_flops,
+            "parameters": digest_model.parameters,
+            "flops": digest_model.flops,
         }
 
         # Model summary text report
         summary_filepath = os.path.join(output_dir, f"{model_name}_summary.txt")
-        digest_model.save_txt_report(summary_filepath)
+        digest_model.save_text_report(summary_filepath)
+
+        # Model summary yaml report
+        summary_filepath = os.path.join(output_dir, f"{model_name}_summary.yaml")
+        digest_model.save_yaml_report(summary_filepath)
 
         # Save csv containing node-level information
         nodes_filepath = os.path.join(output_dir, f"{model_name}_nodes.csv")
         digest_model.save_nodes_csv_report(nodes_filepath)
 
         # Save csv containing node type counter
-        node_type_counter = digest_model.get_node_type_counts()
         node_type_filepath = os.path.join(
             output_dir, f"{model_name}_node_type_counts.csv"
         )
-        if node_type_counter:
-            save_node_type_counts_csv_report(node_type_counter, node_type_filepath)
+
+        digest_model.save_node_type_counts_csv_report(node_type_filepath)
 
         # Update global data structure for node type counter
-        global_node_type_counter.update(node_type_counter)
+        global_node_type_counter.update(digest_model.node_type_counts)
 
         # Save csv containing node shape counts per op_type
-        node_shape_counts = digest_model.get_node_shape_counts()
         node_shape_filepath = os.path.join(
             output_dir, f"{model_name}_node_shape_counts.csv"
         )
-        save_node_shape_counts_csv_report(node_shape_counts, node_shape_filepath)
+        digest_model.save_node_shape_counts_csv_report(node_shape_filepath)
 
         # Update global data structure for node shape counter
-        for node_type, shape_counts in node_shape_counts.items():
+        for node_type, shape_counts in digest_model.get_node_shape_counts().items():
             global_node_shape_counter[node_type].update(shape_counts)
 
     if len(onnx_file_list) > 1:
         global_filepath = os.path.join(output_dir, "global_node_type_counts.csv")
-        global_node_type_counter = NodeTypeCounts(
-            global_node_type_counter.most_common()
-        )
-        save_node_type_counts_csv_report(global_node_type_counter, global_filepath)
+        global_node_type_counts = NodeTypeCounts(global_node_type_counter.most_common())
+        save_node_type_counts_csv_report(global_node_type_counts, global_filepath)
 
         global_filepath = os.path.join(output_dir, "global_node_shape_counts.csv")
         save_node_shape_counts_csv_report(global_node_shape_counter, global_filepath)

@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'mainwindow.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.8.0
+## Created by: Qt User Interface Compiler version 6.8.1
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -520,7 +520,7 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"DigestAI", None))
 #if QT_CONFIG(tooltip)
-        self.openFileBtn.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Open a local model file (Ctrl-O)</p></body></html>", None))
+        self.openFileBtn.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Open (Ctrl-O)</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.openFileBtn.setText("")
 #if QT_CONFIG(shortcut)

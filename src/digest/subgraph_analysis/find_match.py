@@ -5,16 +5,14 @@ import argparse
 import json
 import zipfile
 import pandas as pd
-import matplotlib.pyplot as plt
+
 import numpy as np
 from digest.subgraph_analysis.model_encode import (
     encode_model,
 )  # pylint: disable=import-error
 
 
-def find_match(
-    model_path, model_output_path=None, dequantize=False, replace=False, dark_mode=False
-):
+def find_match(model_path, dequantize=False, replace=False):
 
     # Unzip database if needed
     analyzer_path = os.path.dirname(os.path.abspath(__file__))
@@ -71,8 +69,8 @@ def find_match(
     for reference_json in models_json:
         reference_basename = os.path.basename(reference_json)
         reference_name = os.path.splitext(reference_basename)[0]
-        with open(reference_json, "r", encoding="utf-8") as reference_json:
-            reference_model = json.load(reference_json)
+        with open(reference_json, "r", encoding="utf-8") as ref_json_f:
+            reference_model = json.load(ref_json_f)
 
         score = 0
         row = {"Name": reference_name}
@@ -101,54 +99,13 @@ def find_match(
     name_list = df_sorted["Name"].tolist()
     df_sorted.drop("Score", axis=1, inplace=True)
     df_sorted.drop("Name", axis=1, inplace=True)
-
     df_sorted = pd.DataFrame(
         np.array(df_sorted.values),
         index=range(len(name_list)),
         columns=df_sorted.columns,
     )
 
-    if dark_mode:
-        plt.style.use("dark_background")
-    fig, ax = plt.subplots(figsize=(12, 10))
-    im = ax.imshow(df_sorted, cmap="viridis")
-
-    # Show all ticks and label them with the respective list entries
-    ax.set_xticks(np.arange(len(df_sorted.columns)))
-    ax.set_yticks(np.arange(len(name_list)))
-    ax.set_xticklabels([a[:5] for a in df_sorted.columns])
-    ax.set_yticklabels(name_list)
-
-    # Rotate the tick labels and set their alignment
-    plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
-
-    ax.set_title(f"Model Similarity Heatmap - {model_name}")
-
-    cb = plt.colorbar(
-        im,
-        ax=ax,
-        shrink=0.5,
-        format="%.2f",
-        label="Correlation Ratio",
-        orientation="vertical",
-        # pad=0.02,
-    )
-    cb.set_ticks([0, 0.5, 1])  # Set colorbar ticks at 0, 0.5, and 1
-    cb.set_ticklabels(
-        ["0.0 (Low)", "0.5 (Medium)", "1.0 (High)"]
-    )  # Set corresponding labels
-    cb.set_label("Correlation Ratio", labelpad=-100)
-
-    fig.tight_layout()
-
-    if model_output_path is None:
-        model_output_path = "heatmap.png"
-
-    fig.savefig(model_output_path)
-
-    plt.close(fig)
-
-    return name_list, reference_model
+    return name_list, reference_model, df_sorted
 
 
 def main():
@@ -160,12 +117,9 @@ def main():
     parser.add_argument(
         "--replace", action="store_true", help="Replace models previously encoded"
     )
-    parser.add_argument(
-        "--dark-mode", action="store_true", help="Plot image in dark mode"
-    )
 
     args = parser.parse_args()
-    find_match(args.model_path, args.dequantize, args.replace, args.dark_mode)
+    find_match(args.model_path, args.dequantize, args.replace)
 
 
 if __name__ == "__main__":
