@@ -3,7 +3,7 @@
 import os
 from datetime import datetime
 import csv
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Optional
 from collections import Counter, defaultdict, OrderedDict
 
 # pylint: disable=no-name-in-module
@@ -215,6 +215,8 @@ class MultiModelAnalysis(QWidget):
 
         self.model_list = model_list
 
+        self.status_dialog: Optional[StatusDialog] = None
+
     def save_reports(self):
         """This function saves all available reports for the models that are opened
         in the multi-model analysis page."""
@@ -234,7 +236,7 @@ class MultiModelAnalysis(QWidget):
         # Append a subdirectory to the save_directory so that all reports are co-located
         name_id = datetime.now().strftime("%Y%m%d%H%M%S")
         sub_directory = f"multi_model_reports_{name_id}"
-        save_directory = os.path.join(base_directory, sub_directory)
+        save_directory = os.path.normpath(os.path.join(base_directory, sub_directory))
         try:
             os.makedirs(save_directory)
         except OSError as os_err:
@@ -326,7 +328,10 @@ class MultiModelAnalysis(QWidget):
                     writer.writerows(rows)
 
         if save_individual_reports or save_multi_reports:
-            StatusDialog(f"Saved reports to {save_directory}")
+            self.status_dialog = StatusDialog(
+                f"Saved reports to {save_directory}", parent=self
+            )
+            self.status_dialog.show()
 
     def check_box_changed(self):
         if self.ui.individualCheckBox.isChecked() or self.ui.multiCheckBox.isChecked():
