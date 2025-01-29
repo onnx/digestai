@@ -225,6 +225,9 @@ class MultiModelAnalysis(QWidget):
             self, "Select Directory"
         )
 
+        if not base_directory:
+            return
+
         # Check if the directory exists and is writable
         if not os.path.exists(base_directory) or not os.access(base_directory, os.W_OK):
             bad_ext_dialog = StatusDialog(
