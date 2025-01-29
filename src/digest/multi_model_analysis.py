@@ -12,7 +12,7 @@ from PySide6.QtCore import Qt
 from digest.dialog import ProgressDialog, StatusDialog
 from digest.ui.multimodelanalysis_ui import Ui_multiModelAnalysis
 from digest.histogramchartwidget import StackedHistogramWidget
-from digest.qt_utils import apply_dark_style_sheet
+from digest.qt_utils import apply_dark_style_sheet, find_available_save_path
 from digest.model_class.digest_model import (
     NodeTypeCounts,
     NodeShapeCounts,
@@ -255,16 +255,21 @@ class MultiModelAnalysis(QWidget):
             for digest_model in self.model_list:
                 progress.step()
 
-                # Save the text report for the model
+                model_save_dir = find_available_save_path(
+                    os.path.join(save_directory, digest_model.model_name)
+                )
+                os.makedirs(model_save_dir, exist_ok=True)
+
+                # Save the yaml report for the model
                 summary_filepath = os.path.join(
-                    save_directory, f"{digest_model.model_name}_summary.yaml"
+                    model_save_dir, f"{digest_model.model_name}_summary.yaml"
                 )
 
                 digest_model.save_yaml_report(summary_filepath)
 
                 # Save csv of node type counts
                 node_type_filepath = os.path.join(
-                    save_directory, f"{digest_model.model_name}_node_type_counts.csv"
+                    model_save_dir, f"{digest_model.model_name}_node_type_counts.csv"
                 )
 
                 if digest_model.node_type_counts:
@@ -272,13 +277,13 @@ class MultiModelAnalysis(QWidget):
 
                 # Save csv containing node shape counts per op_type
                 node_shape_filepath = os.path.join(
-                    save_directory, f"{digest_model.model_name}_node_shape_counts.csv"
+                    model_save_dir, f"{digest_model.model_name}_node_shape_counts.csv"
                 )
                 digest_model.save_node_shape_counts_csv_report(node_shape_filepath)
 
                 # Save csv containing all node-level information
                 nodes_filepath = os.path.join(
-                    save_directory, f"{digest_model.model_name}_nodes.csv"
+                    model_save_dir, f"{digest_model.model_name}_nodes.csv"
                 )
                 digest_model.save_nodes_csv_report(nodes_filepath)
 
