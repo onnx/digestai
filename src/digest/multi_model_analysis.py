@@ -257,10 +257,10 @@ class MultiModelAnalysis(QWidget):
 
                 # Save the text report for the model
                 summary_filepath = os.path.join(
-                    save_directory, f"{digest_model.model_name}_summary.txt"
+                    save_directory, f"{digest_model.model_name}_summary.yaml"
                 )
 
-                digest_model.save_text_report(summary_filepath)
+                digest_model.save_yaml_report(summary_filepath)
 
                 # Save csv of node type counts
                 node_type_filepath = os.path.join(
