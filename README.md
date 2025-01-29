@@ -20,7 +20,6 @@ DigestAI
 
 <div align="left">
 
-DigestAI is a model analysis tool that extracts insights, enables optimization, and supports direct modifications, making your workflow efficient and effective
 
 ## Table of Contents
 - [Key Features](#key-features)
@@ -43,7 +42,17 @@ DigestAI is a model analysis tool that extracts insights, enables optimization, 
 
 # Key Features
 
-<< FIND THEM OUT FROM PHIL>>
+- Single Model Analysis:
+  - Analyze individual models to extract parameters, FLOPs, protobuf metadata, histograms, model similarity, and IO tensors.
+  - Freeze dynamic input shapes to ensure consistent calculations and analysis.
+- Multi-Model Analysis:
+  - Compare high-level statistics of multiple models side by side.
+  - Batch process single model reports for efficient analysis.
+- Reporting and Export:
+  - Save all extracted statistics into comprehensive reports and CSV files for easy sharing and collaboration.
+  - Open and view shared reports directly within the GUI for seamless integration.
+
+For more insights on Digest AI, see our announcement blog [here](https://www.amd.com/en/developer/resources/technical-articles/digest-ai-model-ingestion-and-analysis-tool.html).
 
 
 # Getting Started
@@ -81,7 +90,7 @@ DigestAI is a model analysis tool that extracts insights, enables optimization, 
 
 # Digest AI User Guide
 
-![Digest AI](img\digest.gif)
+<img src="https://github.com/onnx/digestai/blob/main/img/digest.gif" width="800" alt="Digest AI Demo"/>
 
 ### Opening and Analyzing a Model
 
@@ -141,6 +150,8 @@ This will open a utility where you can specify static dimensions for the inputs,
 Digest AI includes an API for ingesting, modifying, and analyzing machine learning models. This includes the ability to perform the following:
 -	Analyzes a single model or multiple models in a directory.
 -	Generates reports on model summary, node lists, node type counts, and node shape counts.
+
+The `analysis.py` script can be found in the `examples/` directory.
 
 ```python
 # Single model
@@ -212,6 +223,10 @@ We welcome contributions! If you'd like to get involved, please:
 pip install pytest 
 pytest test/test_gui.py
 ```
+
+## Contact
+
+To get in touch, please reach out to us at [digestai@amd.com](mailto:digestai@amd.com).
 
 ## License
 
