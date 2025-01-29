@@ -20,13 +20,37 @@ DigestAI
 
 <div align="left">
 
-DigestAI is a powerful model analysis tool that extracts insights from your models, enabling optimization and direct modification.
+DigestAI is a model analysis tool that extracts insights, enables optimization, and supports direct modifications, making your workflow efficient and effective
+
+## Table of Contents
+- [Key Features](#key-features)
+- [Get Started](#getting-started)
+  - [Installation Instructions for Developers](#installation-instructions-for-developers)
+- [Digest AI User Guide](#digest-ai-user-guide)
+  - [Opening and Analyzing a Model](#opening-and-analyzing-a-model)
+  - [Node List View](#node-list-view)
+  - [Saving and Reporting](#saving-and-reporting)
+  - [Multi-Model Analysis](#multi-model-analysis)
+  - [Hugging Face Module](#hugging-face-module)
+  - [Handling Dynamic Input Shapes](#handling-dynamic-input-shapes)
+  - [Digest API](#digest-api)
+- [Digest AI Developer Guide](#digest-ai-developer-guide)
+  - [GUI Development Using QT](#using-qt-designer-for-gui-development)
+  - [Building a Windows exe](#building-exe-for-windows-deployment)
+  - [Contributing](#contributing-wip)
+- [License](#license)
+- [Code of Conduct](#code-of-conduct)
+
+# Key Features
+
+<< FIND THEM OUT FROM PHIL>>
 
 
-**Get started quickly!** Download the DigestAI executable directly from [link coming soon].
+# Getting Started
 
+- **Get started quickly!** Download the DigestAI executable directly from [link coming soon].
 
-**Developers: Contribute to DigestAI** Follow the installation instruction below to get started.
+- **Developers: Contribute to DigestAI** Follow the installation instruction below to get started.
 
 ## Installation Instructions for Developers
 
@@ -49,11 +73,86 @@ DigestAI is a powerful model analysis tool that extracts insights from your mode
     pip install -e digestai
     ```
 
-1. Start the gui
+1. Start the GUI
 
     ```bash
     digest
     ```
+
+# Digest AI User Guide
+
+![Digest AI](img\digest.gif)
+
+### Opening and Analyzing a Model
+
+In Digest, you can open a model in 3 ways:
+
+1. In the left sidebar, you can open a model by clicking on the “Open a local model” button.
+1. You can use the keyboard shortcut CTRL+O, which will open a file explorer where you can select the model you would like to open.
+1. Or you can simply drag and drop a model file directly onto the interface.
+
+DigestAI also allows you to load a Digest report from a shared YAML file, enabling you to view the report directly in the GUI.
+
+When you select a model file, Digest AI checks model integrity, prepares it for analysis, and extracts key data. After the analysis is complete, you will see a detailed summary of your model, including:
+
+- **Basic Details:** Parameters and FLOPs (Floating Point Operations), which is the algorithmic number of floating-point operations required to run a single set of inputs through the model.
+-	**Advanced Insights:** Operation histogram, parameter and FLOPs intensity per operation type, and a model similarity graph comparing your model to other popular models.
+-	**Model Inputs and Outputs:** Detailed information about tensor names, shapes, data types, and sizes.
+
+### Node List View
+
+There is also a Node List button that opens a window displaying all nodes in the model in a table format, which you can then sort on the various columns.
+
+### Saving and Reporting
+
+Digest AI allows you to save the model analysis using the “Save Report” button found in the left menu.
+
+When you click the save button, specify a folder to save the reports. The following is an example of the files saved:
+
+-	**Heatmap:** a PNG image that shows the similarity of the model to other public models.
+-	**Node CSV Report:** contains all the model’s nodes, parameters, FLOPs, attributes, and inputs and outputs.
+-	**Report:** a text document summarizing the model analysis.
+-	**Histogram:** a PNG image of the operation count.
+-	**Node Type Counts CSV Report:** contains all the model’s nodes and their counts.
+
+### Multi-Model Analysis
+
+Digest AI also includes support for multi-model analysis. By clicking the “Multi-Model Analysis” button, you can select a folder containing multiple models.
+
+This will load a new view where the left pane will list unique models, while the right pane will indicate duplicates.
+
+### Hugging Face Module
+
+Digest AI also includes a Hugging Face module that enables users to download ONNX models directly from the Hugging Face hub without leaving Digest AI. You can search for a model, select it, and click Open. Digest AI will download the model, analyze it, and take you to the summary page.
+
+This feature is currently in Beta. To enable it:
+
+- Navigate to the file `src\digest\gui_config.yaml`
+- Change the `huggingface` module from `false` to `true`
+
+### Handling Dynamic Input Shapes
+
+Some models may have dynamic input shapes, which can affect certain calculations like FLOPs. If you encounter this, Digest AI will display a warning message. To freeze a model with dynamic shapes, scroll down to the “Input Tensor” information section and click the blue snowflake icon next to the table.
+
+This will open a utility where you can specify static dimensions for the inputs, and you can then save the modified model with static shapes.
+
+## Digest API
+
+Digest AI includes an API for ingesting, modifying, and analyzing machine learning models. This includes the ability to perform the following:
+-	Analyzes a single model or multiple models in a directory.
+-	Generates reports on model summary, node lists, node type counts, and node shape counts.
+
+```python
+# Single model
+python analysis.py /path/to/model.onnx /path/to/output/directory
+
+# Multiple models
+python analysis.py /path/to/model/directory /path/to/output/directory
+```
+
+For more information on Digest API, see the [Digest API Guide](examples\README.md).
+
+# Digest AI Developer Guide
 
 ## Using Qt Designer for GUI Development
 
@@ -84,30 +183,28 @@ The following steps are recommended because they are reproducible, however, ther
 
 ## Building EXE for Windows Deployment
 
-1. Setup the environment
-
-* Follow the steps in the previous section `Installation Instructions for Developers` to create the `digestai` conda environment
-* With the `digestai` conda environment activated install pyinstaller:
-
-  ```
-  pip install pyinstaller
-  ```
+  - Setup the environment by following the steps [Installation Instructions for Developers](#installation-instructions-for-developers) to create the `digestai` conda environment
+  - With the `digestai` conda environment activated install pyinstaller:
+  
+    ```bash
+    pip install pyinstaller
+    ```
 
 * Run the following command to create the executable:
 
-  ```
+  ```bash
   pyinstaller.exe main.spec
   ```
 
-  `digest.exe` will be built to `dist/digest.exe`.
+* `digest.exe` will be built to `dist/digest.exe`.
 
-## Contributing (WIP)
+## Contributing
 
 We welcome contributions! If you'd like to get involved, please:
 
 1. Choose an Issue or Create One: Take a look at our existing issues to find something you'd like to work on. If you have a new idea, please create a new issue to discuss it with the maintainers.
 
-1. Fork or Branch and Create a Pull Request (PR): Fork the repository, make your changes, and submit a PR.
+1. Fork or Branch and Create a Pull Request (PR): Fork the repository, make your changes, and submit a PR. Ensure your PR has a clear description of the changes and refers to any issues it addresses (if applicable).
 
 1. Run GUI Test Locally: Before submitting your PR, verify your changes pass the local GUI test. This test is currently not part of our CI workflow and must be run manually from the digestai root directory using:
 
@@ -119,6 +216,9 @@ pytest test/test_gui.py
 ## License
 
 This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE.txt) file for details.
+
+## Code of Conduct
+The ONNX code of conduct is described at [ONNX Code of Conduct](https://onnx.ai/codeofconduct.html).
 
 ## Copyright
 
