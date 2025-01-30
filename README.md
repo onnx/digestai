@@ -90,7 +90,7 @@ For more insights on Digest AI, see our announcement blog [here](https://www.amd
 
 # Digest AI User Guide
 
-<img src="https://github.com/onnx/digestai/blob/main/img/digest.gif" width="800" alt="Digest AI Demo"/>
+![Digest AI Demo](src\digest\assets\gifs\digest.gif)
 
 ### Opening and Analyzing a Model
 
