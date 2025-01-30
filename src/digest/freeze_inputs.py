@@ -154,7 +154,7 @@ class FreezeInputs(QWidget):
         # to arrive in this function with shapes for each dynamic dim.
         dims: Dict[str, int] = {}
         for i in range(self.ui.formLayout.rowCount()):
-            if status.user_canceled:
+            if status.wasCanceled():
                 break
             status.step()
             label_item = self.ui.formLayout.itemAt(i, QFormLayout.ItemRole.LabelRole)
@@ -168,7 +168,7 @@ class FreezeInputs(QWidget):
                     dims[label_text] = line_edit_value
 
         for tensor in self.model_proto.graph.input:
-            if status.user_canceled:
+            if status.wasCanceled():
                 break
             status.step()
             tensor_shape = []
@@ -200,7 +200,6 @@ class FreezeInputs(QWidget):
         except checker.ValidationError as e:
             self.show_warning_and_disable_page()
             print(f"Model did not pass checker: {e}")
-        finally:
             status.close()
 
     def show_warning_and_disable_page(self):

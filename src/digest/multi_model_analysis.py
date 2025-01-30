@@ -258,6 +258,9 @@ class MultiModelAnalysis(QWidget):
             for digest_model in self.model_list:
                 progress.step()
 
+                if progress.wasCanceled():
+                    break
+
                 model_save_dir = find_available_save_path(
                     os.path.join(save_directory, digest_model.model_name)
                 )
@@ -290,9 +293,9 @@ class MultiModelAnalysis(QWidget):
                 )
                 digest_model.save_nodes_csv_report(nodes_filepath)
 
-            progress.close()
+            # progress.close()
 
-        if save_multi_reports:
+        if save_multi_reports and not progress.wasCanceled():
 
             # Save all the global model analysis reports
             if len(self.model_list) > 1:
@@ -336,9 +339,15 @@ class MultiModelAnalysis(QWidget):
                     writer.writerows(rows)
 
         if save_individual_reports or save_multi_reports:
-            self.status_dialog = StatusDialog(
-                f"Saved reports to {save_directory}", parent=self
-            )
+            if not progress.wasCanceled():
+                self.status_dialog = StatusDialog(
+                    f"Saved reports to {save_directory}", parent=self
+                )
+            else:
+                self.status_dialog = StatusDialog(
+                    f"User canceled saving reports, but some have been saved to {save_directory}",
+                    parent=self,
+                )
             self.status_dialog.show()
 
     def check_box_changed(self):

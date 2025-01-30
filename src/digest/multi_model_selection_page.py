@@ -212,13 +212,12 @@ class MultiModelSelectionPage(QWidget):
         else:
             return
 
-        progress = ProgressDialog("Searching directory for model files", 0, self)
-
         onnx_file_list = list(
             glob.glob(os.path.join(directory, "**/*.onnx"), recursive=True)
         )
         onnx_file_list = [os.path.normpath(model_file) for model_file in onnx_file_list]
 
+        # TODO Move to another thread and see if we can capture tqdm
         yaml_file_list = list(
             glob.glob(os.path.join(directory, "**/*.yaml"), recursive=True)
         )
@@ -235,14 +234,13 @@ class MultiModelSelectionPage(QWidget):
 
         serialized_models_paths: defaultdict[bytes, List[str]] = defaultdict(list)
 
-        progress.close()
         progress = ProgressDialog("Loading models", total_num_models, self)
 
         memory_limit_percentage = 90
         models_loaded = 0
         for filepath in onnx_file_list + report_file_list:
             progress.step()
-            if progress.user_canceled:
+            if progress.wasCanceled():
                 break
             try:
                 models_loaded += 1
@@ -277,8 +275,6 @@ class MultiModelSelectionPage(QWidget):
             except DecodeError as error:
                 print(f"Error decoding model {filepath}: {error}")
 
-        progress.close()
-
         progress = ProgressDialog("Processing Models", total_num_models, self)
 
         num_duplicates = 0
@@ -286,7 +282,7 @@ class MultiModelSelectionPage(QWidget):
         self.ui.duplicateListWidget.clear()
         for paths in serialized_models_paths.values():
             progress.step()
-            if progress.user_canceled:
+            if progress.wasCanceled():
                 break
             if len(paths) > 1:
                 num_duplicates += 1
@@ -303,7 +299,7 @@ class MultiModelSelectionPage(QWidget):
         processed_files = set()
         for i in range(len(report_file_list)):
             progress.step()
-            if progress.user_canceled:
+            if progress.wasCanceled():
                 break
             path1 = report_file_list[i]
             if path1 in processed_files:
@@ -329,8 +325,6 @@ class MultiModelSelectionPage(QWidget):
             item.setCheckable(True)
             item.setCheckState(Qt.CheckState.Checked)
             self.item_model.appendRow(item)
-
-        progress.close()
 
         if num_duplicates:
             label_text = f"Ignoring {num_duplicates} duplicate model(s)."
