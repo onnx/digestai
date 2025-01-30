@@ -3,7 +3,7 @@
 import os
 from datetime import datetime
 import csv
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Optional
 from collections import Counter, defaultdict, OrderedDict
 
 # pylint: disable=no-name-in-module
@@ -12,7 +12,7 @@ from PySide6.QtCore import Qt
 from digest.dialog import ProgressDialog, StatusDialog
 from digest.ui.multimodelanalysis_ui import Ui_multiModelAnalysis
 from digest.histogramchartwidget import StackedHistogramWidget
-from digest.qt_utils import apply_dark_style_sheet
+from digest.qt_utils import apply_dark_style_sheet, find_available_save_path
 from digest.model_class.digest_model import (
     NodeTypeCounts,
     NodeShapeCounts,
@@ -215,6 +215,8 @@ class MultiModelAnalysis(QWidget):
 
         self.model_list = model_list
 
+        self.status_dialog: Optional[StatusDialog] = None
+
     def save_reports(self):
         """This function saves all available reports for the models that are opened
         in the multi-model analysis page."""
@@ -222,6 +224,9 @@ class MultiModelAnalysis(QWidget):
         base_directory = QFileDialog(self).getExistingDirectory(
             self, "Select Directory"
         )
+
+        if not base_directory:
+            return
 
         # Check if the directory exists and is writable
         if not os.path.exists(base_directory) or not os.access(base_directory, os.W_OK):
@@ -234,7 +239,7 @@ class MultiModelAnalysis(QWidget):
         # Append a subdirectory to the save_directory so that all reports are co-located
         name_id = datetime.now().strftime("%Y%m%d%H%M%S")
         sub_directory = f"multi_model_reports_{name_id}"
-        save_directory = os.path.join(base_directory, sub_directory)
+        save_directory = os.path.normpath(os.path.join(base_directory, sub_directory))
         try:
             os.makedirs(save_directory)
         except OSError as os_err:
@@ -253,16 +258,24 @@ class MultiModelAnalysis(QWidget):
             for digest_model in self.model_list:
                 progress.step()
 
-                # Save the text report for the model
+                if progress.wasCanceled():
+                    break
+
+                model_save_dir = find_available_save_path(
+                    os.path.join(save_directory, digest_model.model_name)
+                )
+                os.makedirs(model_save_dir, exist_ok=True)
+
+                # Save the yaml report for the model
                 summary_filepath = os.path.join(
-                    save_directory, f"{digest_model.model_name}_summary.txt"
+                    model_save_dir, f"{digest_model.model_name}_summary.yaml"
                 )
 
-                digest_model.save_text_report(summary_filepath)
+                digest_model.save_yaml_report(summary_filepath)
 
                 # Save csv of node type counts
                 node_type_filepath = os.path.join(
-                    save_directory, f"{digest_model.model_name}_node_type_counts.csv"
+                    model_save_dir, f"{digest_model.model_name}_node_type_counts.csv"
                 )
 
                 if digest_model.node_type_counts:
@@ -270,19 +283,19 @@ class MultiModelAnalysis(QWidget):
 
                 # Save csv containing node shape counts per op_type
                 node_shape_filepath = os.path.join(
-                    save_directory, f"{digest_model.model_name}_node_shape_counts.csv"
+                    model_save_dir, f"{digest_model.model_name}_node_shape_counts.csv"
                 )
                 digest_model.save_node_shape_counts_csv_report(node_shape_filepath)
 
                 # Save csv containing all node-level information
                 nodes_filepath = os.path.join(
-                    save_directory, f"{digest_model.model_name}_nodes.csv"
+                    model_save_dir, f"{digest_model.model_name}_nodes.csv"
                 )
                 digest_model.save_nodes_csv_report(nodes_filepath)
 
-            progress.close()
+            # progress.close()
 
-        if save_multi_reports:
+        if save_multi_reports and not progress.wasCanceled():
 
             # Save all the global model analysis reports
             if len(self.model_list) > 1:
@@ -326,7 +339,16 @@ class MultiModelAnalysis(QWidget):
                     writer.writerows(rows)
 
         if save_individual_reports or save_multi_reports:
-            StatusDialog(f"Saved reports to {save_directory}")
+            if not progress.wasCanceled():
+                self.status_dialog = StatusDialog(
+                    f"Saved reports to {save_directory}", parent=self
+                )
+            else:
+                self.status_dialog = StatusDialog(
+                    f"User canceled saving reports, but some have been saved to {save_directory}",
+                    parent=self,
+                )
+            self.status_dialog.show()
 
     def check_box_changed(self):
         if self.ui.individualCheckBox.isChecked() or self.ui.multiCheckBox.isChecked():

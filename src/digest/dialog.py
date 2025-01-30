@@ -34,8 +34,6 @@ class ProgressDialog(QProgressDialog):
         self.setWindowIcon(QIcon(":/assets/images/digest_logo_500.jpg"))
         self.setValue(1)
 
-        self.user_canceled = False
-        self.canceled.connect(self.cancel)
         self.step_size = 1
         self.current_step = 0
         self.num_steps = num_steps
@@ -45,9 +43,6 @@ class ProgressDialog(QProgressDialog):
         if self.current_step > self.num_steps:
             self.current_step = self.num_steps
         self.setValue(self.current_step)
-
-    def cancel(self):
-        self.user_canceled = True
 
 
 class InfoDialog(QDialog):

@@ -973,6 +973,9 @@ class DigestApp(QMainWindow):
             self, "Select Directory"
         )
 
+        if not save_directory:
+            return
+
         # Check if the directory exists and is writable
         if not os.path.exists(save_directory) or not os.access(save_directory, os.W_OK):
             self.show_warning_dialog(

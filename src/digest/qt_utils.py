@@ -65,3 +65,17 @@ def apply_multiple_style_sheets(
         style_stream += QTextStream(style_qfile).readAll()
 
     widget.setStyleSheet(style_stream)
+
+
+def find_available_save_path(save_path: str) -> str:
+    """Increments a counter until it finds a suitable save location
+    For example, if my/dir already exists this function will return the first
+    available location out of my/dir(1) or my/dir(2) etc..."""
+    counter = 1
+    new_path = save_path
+    while os.path.exists(new_path):
+        base_dir, base_name = os.path.split(save_path)
+        name, ext = os.path.splitext(base_name)
+        new_path = os.path.join(base_dir, f"{name}({counter}){ext}")
+        counter += 1
+    return new_path

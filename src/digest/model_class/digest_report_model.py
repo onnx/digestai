@@ -1,4 +1,5 @@
 import os
+import shutil
 from collections import OrderedDict
 import csv
 import ast
@@ -141,8 +142,11 @@ class DigestReportModel(DigestModel):
         return
 
     def save_yaml_report(self, filepath: str) -> None:
-        """Report models are not intended to be saved"""
-        return
+        """self.filepath if exists is the path to the yaml file that was loaded
+        Despite saving a single model yaml report is not currently support, we can
+        offer this feature for multi model analysis."""
+        if self.filepath and os.path.exists(self.filepath):
+            shutil.copy(self.filepath, filepath)
 
     def save_text_report(self, filepath: str) -> None:
         """Report models are not intended to be saved"""
