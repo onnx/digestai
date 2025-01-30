@@ -47,7 +47,9 @@ class AnalysisThread(QThread):
 
         for file, model in self.model_dict.items():
             if self.user_canceled:
-                break
+                self.close_progress.emit()
+                self.completed.emit([])
+                return
             self.step_progress.emit()
             if model:
                 continue
@@ -65,7 +67,7 @@ class AnalysisThread(QThread):
 
         self.close_progress.emit()
 
-        model_list = [model for model in self.model_dict.values()]
+        model_list = list(self.model_dict.values())
 
         self.completed.emit(model_list)
 
@@ -362,6 +364,9 @@ class MultiModelSelectionPage(QWidget):
     def open_analysis(
         self, model_list: List[Union[DigestOnnxModel, DigestReportModel]]
     ):
+        if not model_list:
+            return
+
         multi_model_analysis = MultiModelAnalysis(model_list)
         self.analysis_window.setCentralWidget(multi_model_analysis)
         self.analysis_window.setWindowIcon(QIcon(":/assets/images/digest_logo_500.jpg"))
