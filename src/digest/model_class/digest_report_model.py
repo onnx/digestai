@@ -4,6 +4,7 @@ from collections import OrderedDict
 import csv
 import ast
 import re
+from PySide6.QtCore import QRunnable, Signal, Slot, QObject
 from typing import Tuple, Optional, List, Dict, Any, Union
 import yaml
 from digest.model_class.digest_model import (
@@ -151,6 +152,30 @@ class DigestReportModel(DigestModel):
     def save_text_report(self, filepath: str) -> None:
         """Report models are not intended to be saved"""
         return
+
+
+class WorkerSignals(QObject):
+    completed = Signal(DigestReportModel)
+
+
+class LoadDigestReportModelWorker(QRunnable):
+
+    def __init__(
+        self,
+        model_file_path: str,
+        model_name: str,
+    ):
+        super().__init__()
+        self.signals = WorkerSignals()
+        self.tab_name = model_name
+        self.model_file_path = model_file_path
+        self.unique_id: Optional[str] = None
+
+    @Slot()
+    def run(self):
+
+        digest_model = DigestReportModel(self.model_file_path)
+        self.signals.completed.emit(digest_model)
 
 
 def validate_yaml(report_file_path: str) -> bool:

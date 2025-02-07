@@ -1,7 +1,9 @@
 # Copyright(C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
+# pylint: disable=no-name-in-module
 import os
 from typing import List, Dict, Optional, Tuple, cast
+from PySide6.QtCore import QRunnable, Signal, Slot, QObject
 from datetime import datetime
 import importlib.metadata
 from collections import OrderedDict
@@ -654,3 +656,44 @@ class DigestOnnxModel(DigestModel):
             f_p.write("Output Tensor(s) Information:\n")
             f_p.write(output_table.get_string())
             f_p.write("\n\n")
+
+
+class WorkerSignals(QObject):
+    completed = Signal(DigestOnnxModel)
+
+
+class LoadDigestOnnxModelWorker(QRunnable):
+
+    def __init__(
+        self,
+        model_file_path: str,
+        model_name: str,
+    ):
+        super().__init__()
+        self.signals = WorkerSignals()
+        self.tab_name = model_name
+        self.model_file_path = model_file_path
+        self.unique_id: Optional[str] = None
+
+    @Slot()
+    def run(self):
+        try:
+            model_proto = onnx_utils.load_onnx(
+                self.model_file_path, load_external_data=False
+            )
+            opt_model, _ = onnx_utils.optimize_onnx_model(model_proto)
+        except FileNotFoundError as e:
+            print(f"File not found: {e.filename}")
+
+        digest_model = DigestOnnxModel(
+            opt_model,
+            model_name=self.tab_name,
+            onnx_filepath=self.model_file_path,
+        )
+
+        self.unique_id = digest_model.unique_id
+
+        if not self.tab_name:
+            self.tab_name = digest_model.model_name
+
+        self.signals.completed.emit(digest_model)
