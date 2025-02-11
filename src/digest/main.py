@@ -5,7 +5,6 @@ import os
 import sys
 import shutil
 import argparse
-from datetime import datetime
 from typing import Dict, Tuple, Optional
 import tempfile
 from enum import IntEnum
@@ -22,7 +21,6 @@ from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
     QPushButton,
-    QTableWidgetItem,
     QMainWindow,
     QLabel,
     QTextEdit,
@@ -34,7 +32,7 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QMenu,
 )
-from PySide6.QtGui import QDragEnterEvent, QDropEvent, QPixmap, QMovie, QIcon, QFont
+from PySide6.QtGui import QDragEnterEvent, QDropEvent, QPixmap, QIcon, QFont
 from PySide6.QtCore import Qt, QSize, QThreadPool
 
 from digest.dialog import StatusDialog, InfoDialog, WarnDialog, ProgressDialog
@@ -57,7 +55,10 @@ from digest.model_class.digest_report_model import (
 )
 from utils import onnx_utils
 
-GUI_CONFIG = os.path.join(os.path.dirname(__file__), "gui_config.yaml")
+
+class DigestConfig:
+    GUI_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "gui_config.yaml")
+    SUPPORTED_EXTENSIONS = [".onnx", ".yaml"]
 
 
 class SimilarityAnalysisReport(QMainWindow):
@@ -154,6 +155,12 @@ class SimilarityAnalysisReport(QMainWindow):
         QApplication.clipboard().setPixmap(pixmap)
 
 
+class ModelLoadError(Exception):
+    """Raised when there's an error loading a model."""
+
+    pass
+
+
 class DigestApp(QMainWindow):
 
     class Page(IntEnum):
@@ -165,15 +172,15 @@ class DigestApp(QMainWindow):
 
     def __init__(self, model_file: Optional[str] = None):
         super(DigestApp, self).__init__()
-        self.ui = Ui_MainWindow()
+        self.ui: Ui_MainWindow = Ui_MainWindow()
         self.ui.setupUi(self)
 
-        self.thread_pool = QThreadPool()
+        self.thread_pool: QThreadPool = QThreadPool()
 
         self.nodes_window: Dict[str, PopupWindow] = {}
         self.status_dialog: Optional[StatusDialog] = None
-        self.err_open_dialog = None
-        self.temp_dir = tempfile.TemporaryDirectory()
+        self.err_open_dialog: Optional[StatusDialog] = None
+        self.temp_dir: tempfile.TemporaryDirectory = tempfile.TemporaryDirectory()
         self.digest_models: Dict[str, DigestModel] = {}
 
         self.model_similarity_report: Dict[str, SimilarityAnalysisReport] = {}
@@ -202,7 +209,7 @@ class DigestApp(QMainWindow):
         self.load_progress: Optional[ProgressDialog] = None
 
         enable_huggingface_model = True
-        with open(GUI_CONFIG, "r", encoding="utf-8") as f:
+        with open(DigestConfig.GUI_CONFIG_PATH, "r", encoding="utf-8") as f:
             config = yaml.safe_load(f)
             enable_huggingface_model = config["modules"]["huggingface"]
 
@@ -384,58 +391,55 @@ class DigestApp(QMainWindow):
             ):
                 self.ui.saveBtn.setEnabled(True)
 
-    def load_model(self, file_path: str):
+    def load_model(self, file_path: str) -> None:
+        try:
+            file_path = os.path.normpath(file_path)
+            if not os.path.exists(file_path):
+                raise ModelLoadError(f"Model file {file_path} does not exist.")
 
-        # Ensure the filepath follows a standard formatting:
-        file_path = os.path.normpath(file_path)
+            basename, file_ext = os.path.splitext(os.path.basename(file_path))
+            supported_exts = [".onnx", ".yaml"]
 
-        if not os.path.exists(file_path):
+            if file_ext not in supported_exts:
+                raise ModelLoadError(
+                    f"Digest does not support files with the extension {file_ext}"
+                )
+
+            # Before opening the file, check to see if it is already opened.
+            for index in range(self.ui.tabWidget.count()):
+                widget = self.ui.tabWidget.widget(index)
+                if isinstance(widget, modelSummary) and file_path == widget.file:
+                    self.ui.tabWidget.setCurrentIndex(index)
+                    return
+
+            self.load_progress = ProgressDialog("Loading Model...", 3, self)
+            self.load_progress.step()
+
+            self.load_progress.setLabelText(
+                "Creating a Digest model. Please be patient as this could take a minute."
+            )
+
+            if file_ext == ".onnx":
+                # Load the digest onnx model on a separate thread
+                digest_model_worker = LoadDigestOnnxModelWorker(
+                    model_name=basename, model_file_path=file_path
+                )
+            elif file_ext == ".yaml":
+                digest_model_worker = LoadDigestReportModelWorker(
+                    model_name=basename, model_file_path=file_path
+                )
+
+            digest_model_worker.signals.completed.connect(self.post_load_model)
+
+            self.thread_pool.start(digest_model_worker)
+        except ModelLoadError as e:
+            self.status_dialog = StatusDialog(str(e), parent=self)
+            self.status_dialog.show()
+        except Exception as e:
             self.status_dialog = StatusDialog(
-                f"Model file {file_path} does not exist.",
-                parent=self,
+                f"Unexpected error loading model: {str(e)}", parent=self
             )
             self.status_dialog.show()
-            return
-
-        basename, file_ext = os.path.splitext(os.path.basename(file_path))
-
-        supported_exts = [".onnx", ".yaml"]
-
-        if not file_ext in supported_exts:
-            self.status_dialog = StatusDialog(
-                f"Digest does not support files with the extension {file_ext}",
-                parent=self,
-            )
-            self.status_dialog.show()
-            return
-
-        # Before opening the file, check to see if it is already opened.
-        for index in range(self.ui.tabWidget.count()):
-            widget = self.ui.tabWidget.widget(index)
-            if isinstance(widget, modelSummary) and file_path == widget.file:
-                self.ui.tabWidget.setCurrentIndex(index)
-                return
-
-        self.load_progress = ProgressDialog("Loading Model...", 3, self)
-        self.load_progress.step()
-
-        self.load_progress.setLabelText(
-            "Creating a Digest model. Please be patient as this could take a minute."
-        )
-
-        if file_ext == ".onnx":
-            # Load the digest onnx model on a separate thread
-            digest_model_worker = LoadDigestOnnxModelWorker(
-                model_name=basename, model_file_path=file_path
-            )
-        elif file_ext == ".yaml":
-            digest_model_worker = LoadDigestReportModelWorker(
-                model_name=basename, model_file_path=file_path
-            )
-
-        digest_model_worker.signals.completed.connect(self.post_load_model)
-
-        self.thread_pool.start(digest_model_worker)
 
     def post_load_model(self, digest_model: DigestModel):
         """This function is automatically run after the model load workers are finished"""
@@ -565,79 +569,79 @@ class DigestApp(QMainWindow):
         if not isinstance(current_tab, modelSummary):
             return
 
-        digest_model = self.digest_models[current_tab.model_id]
-        if not digest_model.model_name:
-            print("Warning, digest_model model name not set.")
-
-        model_name = str(digest_model.model_name)
-
-        save_directory = QFileDialog(self).getExistingDirectory(
-            self, "Select Directory"
-        )
-
+        save_directory = self._get_save_directory()
         if not save_directory:
             return
 
-        # Check if the directory exists and is writable
-        if not os.path.exists(save_directory) or not os.access(save_directory, os.W_OK):
-            self.show_warning_dialog(
-                f"The directory {save_directory} is not valid or writable."
-            )
+        try:
+            self._save_report_files(current_tab, save_directory)
+        except Exception as exception:
+            self._handle_save_error(exception)
+        else:
+            self._show_save_success(save_directory)
 
-        save_directory = os.path.join(
-            save_directory, str(digest_model.model_name) + "_reports"
+    def _get_save_directory(self) -> Optional[str]:
+        """Get and validate the save directory from user."""
+        directory = QFileDialog(self).getExistingDirectory(self, "Select Directory")
+        if not directory:
+            return None
+
+        if not os.path.exists(directory) or not os.access(directory, os.W_OK):
+            self.show_warning_dialog(
+                f"The directory {directory} is not valid or writable."
+            )
+            return None
+
+        return directory
+
+    def _save_report_files(self, current_tab, save_directory):
+        model_name = current_tab.ui.modelName.text()
+
+        # Save the node histogram image
+        node_histogram = current_tab.ui.opHistogramChart.grab()
+        node_histogram.save(
+            os.path.join(save_directory, f"{model_name}_histogram.png"), "PNG"
         )
 
-        try:
-            os.makedirs(save_directory, exist_ok=True)
+        # Save csv of node type counts
+        node_type_filepath = os.path.join(
+            save_directory, f"{model_name}_node_type_counts.csv"
+        )
 
-            # Save the node histogram image
-            node_histogram = current_tab.ui.opHistogramChart.grab()
-            node_histogram.save(
-                os.path.join(save_directory, f"{model_name}_histogram.png"), "PNG"
-            )
+        self.digest_models[current_tab.model_id].save_node_type_counts_csv_report(
+            node_type_filepath
+        )
 
-            # Save csv of node type counts
-            node_type_filepath = os.path.join(
-                save_directory, f"{model_name}_node_type_counts.csv"
-            )
+        # Save (copy) the similarity image
+        png_file_path = current_tab.png_file_path
 
-            digest_model.save_node_type_counts_csv_report(node_type_filepath)
+        png_save_path = os.path.join(save_directory, f"{model_name}_heatmap.png")
+        if png_file_path and os.path.exists(png_file_path):
+            shutil.copy(png_file_path, png_save_path)
 
-            # Save (copy) the similarity image
-            png_file_path = current_tab.png_file_path
+        # Save the text report
+        txt_report_filepath = os.path.join(save_directory, f"{model_name}_report.txt")
+        self.digest_models[current_tab.model_id].save_text_report(txt_report_filepath)
 
-            png_save_path = os.path.join(save_directory, f"{model_name}_heatmap.png")
-            if png_file_path and os.path.exists(png_file_path):
-                shutil.copy(png_file_path, png_save_path)
+        # Save the yaml report
+        yaml_report_filepath = os.path.join(save_directory, f"{model_name}_report.yaml")
+        self.digest_models[current_tab.model_id].save_yaml_report(yaml_report_filepath)
 
-            # Save the text report
-            txt_report_filepath = os.path.join(
-                save_directory, f"{model_name}_report.txt"
-            )
-            digest_model.save_text_report(txt_report_filepath)
+        # Save the node list
+        nodes_report_filepath = os.path.join(save_directory, f"{model_name}_nodes.csv")
 
-            # Save the yaml report
-            yaml_report_filepath = os.path.join(
-                save_directory, f"{model_name}_report.yaml"
-            )
-            digest_model.save_yaml_report(yaml_report_filepath)
+        self.save_nodes_csv(nodes_report_filepath, False)
 
-            # Save the node list
-            nodes_report_filepath = os.path.join(
-                save_directory, f"{model_name}_nodes.csv"
-            )
+    def _handle_save_error(self, exception):
+        self.status_dialog = StatusDialog(f"{exception}")
+        self.status_dialog.show()
 
-            self.save_nodes_csv(nodes_report_filepath, False)
-        except Exception as exception:  # pylint: disable=broad-exception-caught
-            self.status_dialog = StatusDialog(f"{exception}")
-            self.status_dialog.show()
-        else:
-            self.status_dialog = StatusDialog(
-                f"Saved reports to: \n{os.path.abspath(save_directory)}",
-                "Successfully saved reports!",
-            )
-            self.status_dialog.show()
+    def _show_save_success(self, save_directory):
+        self.status_dialog = StatusDialog(
+            f"Saved reports to: \n{os.path.abspath(save_directory)}",
+            "Successfully saved reports!",
+        )
+        self.status_dialog.show()
 
     def on_dialog_closed(self):
         self.infoDialog = None
@@ -716,11 +720,23 @@ class DigestApp(QMainWindow):
         self.nodes_window[model_id].open()
 
     def closeEvent(self, event):
-        for window in QApplication.topLevelWidgets():
-            if window != self:
-                window.close()
+        """Ensure proper cleanup of resources when closing the application."""
+        try:
+            # Close all child windows
+            for window in QApplication.topLevelWidgets():
+                if window != self:
+                    window.close()
 
-        super().closeEvent(event)
+            # Cleanup temporary directory
+            if hasattr(self, "temp_dir"):
+                self.temp_dir.cleanup()
+
+            # Wait for thread pool to finish
+            if hasattr(self, "thread_pool"):
+                self.thread_pool.waitForDone()
+
+        finally:
+            super().closeEvent(event)
 
 
 def main():
