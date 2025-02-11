@@ -89,26 +89,32 @@ class modelSummary(QWidget):
         self.ui.opHistogramChart.set_data(node_type_counts)
         self.ui.nodes.setText(str(sum(node_type_counts.values())))
 
-        flops_str = format(digest_model.flops, ",")
+        # Format flops with commas if available
+        flops_str = "N/A"
+        if digest_model.flops is not None:
+            flops_str = format(digest_model.flops, ",")
+
+            # Set up the FLOPs pie chart
+            pie_chart_labels, pie_chart_data = zip(
+                *digest_model.node_type_flops.items()
+            )
+            self.ui.flopsPieChart.set_data(
+                "FLOPs Intensity Per Op Type",
+                pie_chart_labels,
+                pie_chart_data,
+            )
+
+            # Set up the params pie chart
+            pie_chart_labels, pie_chart_data = zip(
+                *digest_model.node_type_parameters.items()
+            )
+            self.ui.parametersPieChart.set_data(
+                "Parameter Intensity Per Op Type",
+                pie_chart_labels,
+                pie_chart_data,
+            )
+
         self.ui.flops.setText(flops_str)
-
-        # Set up the FLOPs pie chart
-        pie_chart_labels, pie_chart_data = zip(*digest_model.node_type_flops.items())
-        self.ui.flopsPieChart.set_data(
-            "FLOPs Intensity Per Op Type",
-            pie_chart_labels,
-            pie_chart_data,
-        )
-
-        # Set up the params pie chart
-        pie_chart_labels, pie_chart_data = zip(
-            *digest_model.node_type_parameters.items()
-        )
-        self.ui.parametersPieChart.set_data(
-            "Parameter Intensity Per Op Type",
-            pie_chart_labels,
-            pie_chart_data,
-        )
 
         # Inputs Table
         self.ui.inputsTable.setRowCount(len(digest_model.model_inputs))
