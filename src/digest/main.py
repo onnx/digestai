@@ -414,7 +414,7 @@ class DigestApp(QMainWindow):
             self.load_progress.step()
 
             self.load_progress.setLabelText(
-                "Creating a Digest model. "
+                "Creating a Digest model.\n"
                 "Please be patient as this could take a minute."
             )
 
