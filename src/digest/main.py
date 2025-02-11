@@ -158,8 +158,6 @@ class SimilarityAnalysisReport(QMainWindow):
 class ModelLoadError(Exception):
     """Raised when there's an error loading a model."""
 
-    pass
-
 
 class DigestApp(QMainWindow):
 
@@ -419,8 +417,10 @@ class DigestApp(QMainWindow):
                 "Creating a Digest model. Please be patient as this could take a minute."
             )
 
+            # Initialize worker variable
+            digest_model_worker = None
+
             if file_ext == ".onnx":
-                # Load the digest onnx model on a separate thread
                 digest_model_worker = LoadDigestOnnxModelWorker(
                     model_name=basename, model_file_path=file_path
                 )
@@ -429,13 +429,13 @@ class DigestApp(QMainWindow):
                     model_name=basename, model_file_path=file_path
                 )
 
-            digest_model_worker.signals.completed.connect(self.post_load_model)
-
-            self.thread_pool.start(digest_model_worker)
+            if digest_model_worker is not None:
+                digest_model_worker.signals.completed.connect(self.post_load_model)
+                self.thread_pool.start(digest_model_worker)
         except ModelLoadError as e:
             self.status_dialog = StatusDialog(str(e), parent=self)
             self.status_dialog.show()
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             self.status_dialog = StatusDialog(
                 f"Unexpected error loading model: {str(e)}", parent=self
             )
@@ -575,7 +575,7 @@ class DigestApp(QMainWindow):
 
         try:
             self._save_report_files(current_tab, save_directory)
-        except Exception as exception:
+        except Exception as exception:  # pylint: disable=broad-except
             self._handle_save_error(exception)
         else:
             self._show_save_success(save_directory)
