@@ -3,8 +3,7 @@
 import os
 from datetime import datetime
 
-# pylint: disable=invalid-name
-from typing import Optional, Union
+from typing import Optional
 
 # pylint: disable=no-name-in-module
 from PySide6.QtWidgets import QWidget, QTableWidgetItem

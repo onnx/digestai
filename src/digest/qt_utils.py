@@ -6,38 +6,12 @@ import psutil
 
 # pylint: disable=no-name-in-module
 from PySide6.QtWidgets import QWidget, QApplication
-from PySide6.QtCore import QThread, QEventLoop, QTimer
 from PySide6.QtCore import QFile, QTextStream
 
 from digest.dialog import StatusDialog
 
 ROOT_FOLDER = os.path.dirname(__file__)
 BASE_STYLE_FILE = os.path.join(ROOT_FOLDER, "styles", "darkstyle.qss")
-
-
-def wait_threads(threads: List[QThread], timeout=10000) -> bool:
-
-    loop = QEventLoop()
-    timer = QTimer()
-    timer.setSingleShot(True)
-    timer.timeout.connect(loop.quit)
-
-    def check_threads():
-        if all(thread.isFinished() for thread in threads):
-            loop.quit()
-
-    check_timer = QTimer()
-    check_timer.timeout.connect(check_threads)
-    check_timer.start(100)  # Check every 100ms
-
-    timer.start(timeout)
-    loop.exec()
-
-    check_timer.stop()
-    timer.stop()
-
-    # Return True if all threads finished, False if timed out
-    return all(thread.isFinished() for thread in threads)
 
 
 def get_ram_utilization() -> float:
