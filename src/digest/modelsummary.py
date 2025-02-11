@@ -1,8 +1,8 @@
 # Copyright(C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
+# pylint: disable=invalid-name
 import os
 from datetime import datetime
-
 from typing import Optional
 
 # pylint: disable=no-name-in-module
