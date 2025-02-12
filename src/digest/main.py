@@ -410,9 +410,11 @@ class DigestApp(QMainWindow):
                     self.ui.tabWidget.setCurrentIndex(index)
                     return
 
-            self.load_progress = ProgressDialog("Loading Model...", 3, self)
-            self.load_progress.step()
-
+            # Create progress dialog with indeterminate progress bar
+            self.load_progress = ProgressDialog(label="Loading Model...", parent=self)
+            # Setting min=max=0 creates an indeterminate progress bar
+            self.load_progress.setMinimum(0)
+            self.load_progress.setMaximum(0)
             self.load_progress.setLabelText(
                 "Creating a Digest model.\n"
                 "Please be patient as this could take a minute."
@@ -446,16 +448,11 @@ class DigestApp(QMainWindow):
         """This function is automatically run after the model load workers are finished"""
 
         if self.load_progress:
-            self.load_progress.step()
-            self.load_progress.setLabelText("Displaying the model summary")
+            self.load_progress.close()
 
         if digest_model.unique_id:
             model_id = digest_model.unique_id
         else:
-
-            if self.load_progress:
-                self.load_progress.close()
-
             self.status_dialog = StatusDialog(
                 "Unexpected Error: Digest model did not return a valid ID.",
                 parent=self,
@@ -482,9 +479,6 @@ class DigestApp(QMainWindow):
         self.ui.tabWidget.setCurrentIndex(new_tab_idx)
         self.ui.stackedWidget.setCurrentIndex(self.Page.SUMMARY)
         self.ui.singleModelWidget.show()
-
-        if self.load_progress:
-            self.load_progress.step()
 
         if isinstance(digest_model, DigestOnnxModel) and digest_model.model_proto:
             self.stats_save_button_flag[model_id] = True
