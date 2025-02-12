@@ -39,6 +39,8 @@ class DigestGuiTest(unittest.TestCase):
 
     def setUp(self):
         self.digest_app = digest.main.DigestApp()
+        if self.digest_app is None:
+            self.fail("Failed to initialize DigestApp")
         self.digest_app.show()
         self.initial_tab_count = self.digest_app.ui.tabWidget.count()
         self.addCleanup(self.digest_app.close)
