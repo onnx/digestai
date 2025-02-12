@@ -232,6 +232,10 @@ class MultiModelSelectionPage(QWidget):
 
         total_num_models = len(onnx_file_list) + len(report_file_list)
 
+        if total_num_models == 0:
+            self.update_message_label("No models found in the selected directory.")
+            return
+
         serialized_models_paths: defaultdict[bytes, List[str]] = defaultdict(list)
 
         progress = ProgressDialog("Loading models", total_num_models, self)
