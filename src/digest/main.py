@@ -33,7 +33,7 @@ from PySide6.QtWidgets import (
     QMenu,
 )
 from PySide6.QtGui import QDragEnterEvent, QDropEvent, QPixmap, QIcon, QFont
-from PySide6.QtCore import Qt, QSize, QThreadPool
+from PySide6.QtCore import Qt, QSize, QThreadPool, Signal
 
 from digest.dialog import StatusDialog, InfoDialog, WarnDialog, ProgressDialog
 from digest.similarity_analysis import SimilarityWorker, post_process
@@ -160,6 +160,9 @@ class ModelLoadError(Exception):
 
 
 class DigestApp(QMainWindow):
+    """Main application window for Digest."""
+
+    model_loaded = Signal()  # Used for tests
 
     class Page(IntEnum):
         SPLASH = 0
@@ -388,6 +391,8 @@ class DigestApp(QMainWindow):
                 self.digest_models[model_id], DigestReportModel
             ):
                 self.ui.saveBtn.setEnabled(True)
+
+        self.model_loaded.emit()  # Used for tests
 
     def load_model(self, file_path: str) -> None:
         try:

@@ -26,9 +26,6 @@ ROOT_FOLDER = os.path.dirname(os.path.abspath(__file__))
 
 class modelSummary(QWidget):
 
-    # def __init__(
-    #     self, digest_model: Union[DigestOnnxModel, DigestReportModel], parent=None
-    # ):
     def __init__(self, digest_model: DigestModel, parent=None):
         super().__init__(parent)
         self.ui = Ui_modelSummary()
