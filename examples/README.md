@@ -33,4 +33,4 @@ The script generates various text and csv reports that provide insights into you
 
 
 ### Copyright
-Copyright(C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+Copyright(C) 2025 Advanced Micro Devices, Inc. All rights reserved.

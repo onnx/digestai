@@ -1,5 +1,5 @@
 <!--
-Copyright(C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+Copyright(C) 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 SPDX-License-Identifier: Apache-2.0
 -->
@@ -237,4 +237,4 @@ The ONNX code of conduct is described at [ONNX Code of Conduct](https://onnx.ai/
 
 ## Copyright
 
-Copyright(C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+Copyright(C) 2025 Advanced Micro Devices, Inc. All rights reserved.
