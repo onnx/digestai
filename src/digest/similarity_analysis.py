@@ -3,83 +3,29 @@
 # pylint: disable=no-name-in-module
 import os
 from typing import List, Optional
-from PySide6.QtCore import QThread, Signal, QEventLoop, QTimer
+from PySide6.QtCore import Signal, QRunnable, QObject
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from digest.model_class.digest_onnx_model import DigestOnnxModel
 from digest.subgraph_analysis.find_match import find_match
 
 
-def wait_threads(threads: List[QThread], timeout=10000) -> bool:
-
-    loop = QEventLoop()
-    timer = QTimer()
-    timer.setSingleShot(True)
-    timer.timeout.connect(loop.quit)
-
-    def check_threads():
-        if all(thread.isFinished() for thread in threads):
-            loop.quit()
-
-    check_timer = QTimer()
-    check_timer.timeout.connect(check_threads)
-    check_timer.start(100)  # Check every 100ms
-
-    timer.start(timeout)
-    loop.exec()
-
-    check_timer.stop()
-    timer.stop()
-
-    # Return True if all threads finished, False if timed out
-    return all(thread.isFinished() for thread in threads)
+class WorkerSignals(QObject):
+    completed = Signal(bool, str, str, str, pd.DataFrame)
 
 
-class StatsThread(QThread):
-
-    completed = Signal(DigestOnnxModel, str)
+class SimilarityWorker(QRunnable):
 
     def __init__(
         self,
-        model=None,
-        tab_name: Optional[str] = None,
-        unique_id: Optional[str] = None,
-    ):
-        super().__init__()
-        self.model = model
-        self.tab_name = tab_name
-        self.unique_id = unique_id
-
-    def run(self):
-        if not self.model:
-            raise ValueError("You must specify a model.")
-        if not self.tab_name:
-            raise ValueError("You must specify a tab name.")
-        if not self.unique_id:
-            raise ValueError("You must specify a unique id.")
-
-        digest_model = DigestOnnxModel(self.model, save_proto=False)
-
-        self.completed.emit(digest_model, self.unique_id)
-
-    def wait(self, timeout=10000):
-        wait_threads([self], timeout)
-
-
-class SimilarityThread(QThread):
-
-    completed_successfully = Signal(bool, str, str, str, pd.DataFrame)
-
-    def __init__(
-        self,
-        model_filepath: Optional[str] = None,
-        png_filepath: Optional[str] = None,
+        model_file_path: Optional[str] = None,
+        png_file_path: Optional[str] = None,
         model_id: Optional[str] = None,
     ):
         super().__init__()
-        self.model_filepath = model_filepath
-        self.png_filepath = png_filepath
+        self.signals = WorkerSignals()
+        self.model_filepath = model_file_path
+        self.png_filepath = png_file_path
         self.model_id = model_id
 
     def run(self):
@@ -99,18 +45,15 @@ class SimilarityThread(QThread):
             most_similar = [os.path.basename(path) for path in most_similar]
             # We convert List[str] to str to send through the signal
             most_similar = ",".join(most_similar)
-            self.completed_successfully.emit(
+            self.signals.completed.emit(
                 True, self.model_id, most_similar, self.png_filepath, df_sorted
             )
         except Exception as e:  # pylint: disable=broad-exception-caught
             most_similar = ""
-            self.completed_successfully.emit(
+            self.signals.completed.emit(
                 False, self.model_id, most_similar, self.png_filepath, df_sorted
             )
             print(f"Issue creating similarity analysis: {e}")
-
-    def wait(self, timeout=10000):
-        wait_threads([self], timeout)
 
 
 def post_process(

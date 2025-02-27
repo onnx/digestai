@@ -21,7 +21,7 @@ from PySide6.QtCore import Qt
 class ProgressDialog(QProgressDialog):
     """A pop up window with a progress label that goes from 1 to 100"""
 
-    def __init__(self, label: str, num_steps: int, parent=None):
+    def __init__(self, label: str, num_steps: int = 0, parent=None):
         """
         label: the text to be shown in the pop up dialog
         num_steps: the total number of events the progress bar will load through

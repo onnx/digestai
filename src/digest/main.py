@@ -5,8 +5,7 @@ import os
 import sys
 import shutil
 import argparse
-from datetime import datetime
-from typing import Dict, Tuple, Optional, Union
+from typing import Dict, Tuple, Optional
 import tempfile
 from enum import IntEnum
 import pandas as pd
@@ -22,7 +21,6 @@ from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
     QPushButton,
-    QTableWidgetItem,
     QMainWindow,
     QLabel,
     QTextEdit,
@@ -34,11 +32,11 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QMenu,
 )
-from PySide6.QtGui import QDragEnterEvent, QDropEvent, QPixmap, QMovie, QIcon, QFont
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtGui import QDragEnterEvent, QDropEvent, QPixmap, QIcon, QFont
+from PySide6.QtCore import Qt, QSize, QThreadPool, Signal
 
 from digest.dialog import StatusDialog, InfoDialog, WarnDialog, ProgressDialog
-from digest.thread import StatsThread, SimilarityThread, post_process
+from digest.similarity_analysis import SimilarityWorker, post_process
 from digest.popup_window import PopupWindow
 from digest.huggingface_page import HuggingfacePage
 from digest.multi_model_selection_page import MultiModelSelectionPage
@@ -46,12 +44,21 @@ from digest.ui.mainwindow_ui import Ui_MainWindow
 from digest.modelsummary import modelSummary
 from digest.node_summary import NodeSummary
 from digest.qt_utils import apply_dark_style_sheet
-from digest.model_class.digest_model import DigestModel
-from digest.model_class.digest_onnx_model import DigestOnnxModel
-from digest.model_class.digest_report_model import DigestReportModel
+from digest.model_class.digest_model import SupportedModelTypes, DigestModel
+from digest.model_class.digest_onnx_model import (
+    DigestOnnxModel,
+    LoadDigestOnnxModelWorker,
+)
+from digest.model_class.digest_report_model import (
+    DigestReportModel,
+    LoadDigestReportModelWorker,
+)
 from utils import onnx_utils
 
-GUI_CONFIG = os.path.join(os.path.dirname(__file__), "gui_config.yaml")
+
+class DigestConfig:
+    GUI_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "gui_config.yaml")
+    SUPPORTED_EXTENSIONS = [".onnx", ".yaml"]
 
 
 class SimilarityAnalysisReport(QMainWindow):
@@ -148,7 +155,14 @@ class SimilarityAnalysisReport(QMainWindow):
         QApplication.clipboard().setPixmap(pixmap)
 
 
+class ModelLoadError(Exception):
+    """Raised when there's an error loading a model."""
+
+
 class DigestApp(QMainWindow):
+    """Main application window for Digest."""
+
+    model_loaded = Signal()  # Used for tests
 
     class Page(IntEnum):
         SPLASH = 0
@@ -159,18 +173,16 @@ class DigestApp(QMainWindow):
 
     def __init__(self, model_file: Optional[str] = None):
         super(DigestApp, self).__init__()
-        self.ui = Ui_MainWindow()
+        self.ui: Ui_MainWindow = Ui_MainWindow()
         self.ui.setupUi(self)
 
-        self.nodes_window: Dict[str, PopupWindow] = {}
-        self.status_dialog = None
-        self.err_open_dialog = None
-        self.temp_dir = tempfile.TemporaryDirectory()
-        self.digest_models: Dict[str, Union[DigestOnnxModel, DigestReportModel]] = {}
+        self.thread_pool: QThreadPool = QThreadPool()
 
-        # QThread containers
-        self.model_nodes_stats_thread: Dict[str, StatsThread] = {}
-        self.model_similarity_thread: Dict[str, SimilarityThread] = {}
+        self.nodes_window: Dict[str, PopupWindow] = {}
+        self.status_dialog: Optional[StatusDialog] = None
+        self.err_open_dialog: Optional[StatusDialog] = None
+        self.temp_dir: tempfile.TemporaryDirectory = tempfile.TemporaryDirectory()
+        self.digest_models: Dict[str, DigestModel] = {}
 
         self.model_similarity_report: Dict[str, SimilarityAnalysisReport] = {}
 
@@ -195,8 +207,10 @@ class DigestApp(QMainWindow):
         self.ui.infoBtn.clicked.connect(self.show_info_dialog)
         self.infoDialog = None
 
+        self.load_progress: Optional[ProgressDialog] = None
+
         enable_huggingface_model = True
-        with open(GUI_CONFIG, "r", encoding="utf-8") as f:
+        with open(DigestConfig.GUI_CONFIG_PATH, "r", encoding="utf-8") as f:
             config = yaml.safe_load(f)
             enable_huggingface_model = config["modules"]["huggingface"]
 
@@ -227,17 +241,7 @@ class DigestApp(QMainWindow):
 
         # Load model file if given as input to the executable
         if model_file:
-            exists = os.path.exists(model_file)
-            ext = os.path.splitext(model_file)[-1]
-            if exists and ext == ".onnx":
-                self.load_onnx(model_file)
-            elif exists and ext == ".yaml":
-                self.load_report(model_file)
-            else:
-                self.err_open_dialog = StatusDialog(
-                    f"Could not open {model_file}", parent=self
-                )
-                self.err_open_dialog.show()
+            self.load_model(model_file)
 
     def uncheck_single_model_buttons(self):
         for button in self.ui.singleModelWidget.findChildren(QPushButton):
@@ -250,11 +254,11 @@ class DigestApp(QMainWindow):
     def tab_focused(self, index):
         widget = self.ui.tabWidget.widget(index)
         if isinstance(widget, modelSummary):
-            unique_id = widget.digest_model.unique_id
+            model_id = widget.model_id
             if (
-                self.stats_save_button_flag[unique_id]
-                and self.similarity_save_button_flag[unique_id]
-                and not isinstance(widget.digest_model, DigestReportModel)
+                self.stats_save_button_flag[model_id]
+                and self.similarity_save_button_flag[model_id]
+                and not widget.model_type == SupportedModelTypes.REPORT
             ):
                 self.ui.saveBtn.setEnabled(True)
             else:
@@ -263,22 +267,12 @@ class DigestApp(QMainWindow):
     def closeTab(self, index):
         summary_widget = self.ui.tabWidget.widget(index)
         if isinstance(summary_widget, modelSummary):
-            unique_id = summary_widget.digest_model.unique_id
+            model_id = summary_widget.model_id
             summary_widget.deleteLater()
 
-            tab_thread = self.model_nodes_stats_thread.get(unique_id)
-            if tab_thread:
-                tab_thread.exit()
-                tab_thread.wait(5000)
-
-                if not tab_thread.isRunning():
-                    del self.model_nodes_stats_thread[unique_id]
-                else:
-                    print(f"Warning: Thread for {unique_id} did not finish in time")
-
             # delete the digest model to free up used memory
-            if unique_id in self.digest_models:
-                del self.digest_models[unique_id]
+            if model_id in self.digest_models:
+                del self.digest_models[model_id]
 
         self.ui.tabWidget.removeTab(index)
         if self.ui.tabWidget.count() == 0:
@@ -295,64 +289,6 @@ class DigestApp(QMainWindow):
 
         self.load_model(file_name)
 
-    def update_cards(
-        self,
-        digest_model: DigestModel,
-        unique_id: str,
-    ):
-        self.digest_models[unique_id].flops = digest_model.flops
-        self.digest_models[unique_id].node_type_flops = digest_model.node_type_flops
-        self.digest_models[unique_id].parameters = digest_model.parameters
-        self.digest_models[unique_id].node_type_parameters = (
-            digest_model.node_type_parameters
-        )
-        self.digest_models[unique_id].node_data = digest_model.node_data
-
-        # We must iterate over the tabWidget and match to the tab_name because the user
-        # may have switched the currentTab during the threads execution.
-        curr_index = -1
-        for index in range(self.ui.tabWidget.count()):
-            widget = self.ui.tabWidget.widget(index)
-            if (
-                isinstance(widget, modelSummary)
-                and widget.digest_model.unique_id == unique_id
-            ):
-                if digest_model.flops is None:
-                    flops_str = "--"
-                else:
-                    flops_str = format(digest_model.flops, ",")
-
-                    # Set up the pie chart
-                    pie_chart_labels, pie_chart_data = zip(
-                        *self.digest_models[unique_id].node_type_flops.items()
-                    )
-                    widget.ui.flopsPieChart.set_data(
-                        "FLOPs Intensity Per Op Type",
-                        pie_chart_labels,
-                        pie_chart_data,
-                    )
-
-                widget.ui.flops.setText(flops_str)
-
-                # Set up the pie chart
-                pie_chart_labels, pie_chart_data = zip(
-                    *self.digest_models[unique_id].node_type_parameters.items()
-                )
-                widget.ui.parametersPieChart.set_data(
-                    "Parameter Intensity Per Op Type",
-                    pie_chart_labels,
-                    pie_chart_data,
-                )
-                curr_index = index
-                break
-
-        self.stats_save_button_flag[unique_id] = True
-        if self.ui.tabWidget.currentIndex() == curr_index:
-            if self.similarity_save_button_flag[unique_id] and not isinstance(
-                digest_model, DigestReportModel
-            ):
-                self.ui.saveBtn.setEnabled(True)
-
     def open_similarity_report(self, model_id: str, image_path, most_similar_models):
         self.model_similarity_report[model_id] = SimilarityAnalysisReport(
             image_path, most_similar_models
@@ -368,32 +304,25 @@ class DigestApp(QMainWindow):
         df_sorted: Optional[pd.DataFrame] = None,
     ):
         widget = None
-        digest_model = None
         curr_index = -1
         for index in range(self.ui.tabWidget.count()):
             tab_widget = self.ui.tabWidget.widget(index)
-            if (
-                isinstance(tab_widget, modelSummary)
-                and tab_widget.digest_model.unique_id == model_id
-            ):
+            if isinstance(tab_widget, modelSummary) and tab_widget.model_id == model_id:
                 widget = tab_widget
-                digest_model = tab_widget.digest_model
                 curr_index = index
                 break
 
         # convert back to a List[str]
         most_similar_list = most_similar.split(",")
 
-        if (
-            completed_successfully
-            and isinstance(widget, modelSummary)
-            and digest_model
-            and png_filepath
-        ):
+        if completed_successfully and isinstance(widget, modelSummary) and png_filepath:
 
             if df_sorted is not None:
                 post_process(
-                    digest_model.model_name, most_similar_list, df_sorted, png_filepath
+                    self.digest_models[model_id].model_name,
+                    most_similar_list,
+                    df_sorted,
+                    png_filepath,
                 )
 
             widget.load_gif.stop()
@@ -459,56 +388,108 @@ class DigestApp(QMainWindow):
         self.similarity_save_button_flag[model_id] = True
         if self.ui.tabWidget.currentIndex() == curr_index:
             if self.stats_save_button_flag[model_id] and not isinstance(
-                digest_model, DigestReportModel
+                self.digest_models[model_id], DigestReportModel
             ):
                 self.ui.saveBtn.setEnabled(True)
 
-    def load_onnx(self, filepath: str):
+        self.model_loaded.emit()  # Used for tests
 
-        # Ensure the filepath follows a standard formatting:
-        filepath = os.path.normpath(filepath)
+    def load_model(self, file_path: str) -> None:
+        try:
+            file_path = os.path.normpath(file_path)
+            if not os.path.exists(file_path):
+                raise ModelLoadError(f"Model file {file_path} does not exist.")
 
-        if not os.path.exists(filepath):
+            basename, file_ext = os.path.splitext(os.path.basename(file_path))
+            supported_exts = [".onnx", ".yaml"]
+
+            if file_ext not in supported_exts:
+                raise ModelLoadError(
+                    f"Digest does not support files with the extension {file_ext}"
+                )
+
+            # Before opening the file, check to see if it is already opened.
+            for index in range(self.ui.tabWidget.count()):
+                widget = self.ui.tabWidget.widget(index)
+                if isinstance(widget, modelSummary) and file_path == widget.file:
+                    self.ui.tabWidget.setCurrentIndex(index)
+                    return
+
+            # Create progress dialog with indeterminate progress bar
+            self.load_progress = ProgressDialog(label="Loading Model...", parent=self)
+            # Setting min=max=0 creates an indeterminate progress bar
+            self.load_progress.setMinimum(0)
+            self.load_progress.setMaximum(0)
+            self.load_progress.setLabelText(
+                "Creating a Digest model.\n"
+                "Please be patient as this could take a minute."
+            )
+
+            # Initialize worker variable
+            digest_model_worker = None
+
+            if file_ext == ".onnx":
+                digest_model_worker = LoadDigestOnnxModelWorker(
+                    model_name=basename, model_file_path=file_path
+                )
+            elif file_ext == ".yaml":
+                digest_model_worker = LoadDigestReportModelWorker(
+                    model_name=basename, model_file_path=file_path
+                )
+
+            if digest_model_worker is not None:
+                digest_model_worker.signals.completed.connect(self.post_load_model)
+                self.thread_pool.start(digest_model_worker)
+        except ModelLoadError as e:
+            self.status_dialog = StatusDialog(str(e), parent=self)
+            self.status_dialog.show()
+        except Exception as e:  # pylint: disable=broad-except
+            self.status_dialog = StatusDialog(
+                f"Unexpected error loading model: {str(e)}", parent=self
+            )
+            self.status_dialog.show()
+
+    def post_load_model(self, digest_model: DigestModel):
+        """This function is automatically run after the model load workers are finished"""
+
+        if self.load_progress:
+            self.load_progress.close()
+
+        if digest_model.unique_id:
+            model_id = digest_model.unique_id
+        else:
+            self.status_dialog = StatusDialog(
+                "Unexpected Error: Digest model did not return a valid ID.",
+                parent=self,
+            )
+            self.status_dialog.show()
+            print("Unexpected Error: Digest model did not return a valid ID.")
             return
+
+        self.stats_save_button_flag[model_id] = False
+        self.similarity_save_button_flag[model_id] = False
 
         # Every time an onnx is loaded we should emulate a model summary button click
         self.summary_clicked()
+        self.digest_models[model_id] = digest_model
 
-        # Before opening the file, check to see if it is already opened.
-        for index in range(self.ui.tabWidget.count()):
-            widget = self.ui.tabWidget.widget(index)
-            if isinstance(widget, modelSummary) and filepath == widget.file:
-                self.ui.tabWidget.setCurrentIndex(index)
-                return
+        model_summary = modelSummary(self.digest_models[model_id])
+        if model_summary.freeze_inputs:
+            model_summary.freeze_inputs.complete_signal.connect(self.load_model)
 
-        try:
+        self.ui.tabWidget.addTab(model_summary, "")
 
-            progress = ProgressDialog("Loading & Optimizing ONNX Model...", 8, self)
-            QApplication.processEvents()  # Process pending events
+        new_tab_idx = self.ui.tabWidget.count() - 1
+        self.ui.tabWidget.setTabText(new_tab_idx, "".join(digest_model.model_name))
+        self.ui.tabWidget.setCurrentIndex(new_tab_idx)
+        self.ui.stackedWidget.setCurrentIndex(self.Page.SUMMARY)
+        self.ui.singleModelWidget.show()
 
-            model = onnx_utils.load_onnx(filepath, load_external_data=False)
-            opt_model, opt_passed = onnx_utils.optimize_onnx_model(model)
-            progress.step()
-
-            basename = os.path.splitext(os.path.basename(filepath))
-            model_name = basename[0]
-
-            # Save the model proto so we can use the Freeze Inputs feature
-            digest_model = DigestOnnxModel(
-                onnx_model=opt_model, model_name=model_name, save_proto=True
+        if isinstance(digest_model, DigestOnnxModel) and digest_model.model_proto:
+            self.stats_save_button_flag[model_id] = True
+            dynamic_input_dims = onnx_utils.get_dynamic_input_dims(
+                digest_model.model_proto
             )
-            model_id = digest_model.unique_id
-
-            self.stats_save_button_flag[model_id] = False
-            self.similarity_save_button_flag[model_id] = False
-
-            self.digest_models[model_id] = digest_model
-
-            model_summary = modelSummary(digest_model)
-            if model_summary.freeze_inputs:
-                model_summary.freeze_inputs.complete_signal.connect(self.load_onnx)
-
-            dynamic_input_dims = onnx_utils.get_dynamic_input_dims(opt_model)
             if dynamic_input_dims:
                 model_summary.ui.freezeButton.setVisible(True)
                 model_summary.ui.warningLabel.setText(
@@ -517,405 +498,30 @@ class DigestApp(QMainWindow):
                 )
                 model_summary.ui.warningLabel.show()
 
-            elif not opt_passed:
-                model_summary.ui.warningLabel.setText(
-                    "⚠️ The model could not be optimized either due to an ONNX Runtime "
-                    "session error or it did not pass the ONNX checker."
-                )
-                model_summary.ui.warningLabel.show()
-
-            progress.step()
-            progress.setLabelText("Checking for dynamic Inputs")
-
-            self.ui.tabWidget.addTab(model_summary, "")
-            model_summary.ui.flops.setText("Loading...")
-
-            # Hide some of the components
-            model_summary.ui.similarityCorrelation.hide()
-            model_summary.ui.similarityCorrelationStatic.hide()
-
-            model_summary.file = filepath
-            model_summary.setObjectName(model_name)
-            model_summary.ui.modelName.setText(model_name)
-            model_summary.ui.modelFilename.setText(filepath)
-            model_summary.ui.generatedDate.setText(datetime.now().strftime("%B %d, %Y"))
-
-            digest_model.model_name = model_name
-            digest_model.filepath = filepath
-            digest_model.model_inputs = onnx_utils.get_model_input_shapes_types(
-                opt_model
-            )
-            digest_model.model_outputs = onnx_utils.get_model_output_shapes_types(
-                opt_model
-            )
-
-            progress.step()
-            progress.setLabelText("Calculating Parameter Count")
-
-            parameter_count = onnx_utils.get_parameter_count(opt_model)
-            model_summary.ui.parameters.setText(format(parameter_count, ","))
-
-            # Kick off model stats thread
-            self.model_nodes_stats_thread[model_id] = StatsThread()
-            self.model_nodes_stats_thread[model_id].completed.connect(self.update_cards)
-
-            self.model_nodes_stats_thread[model_id].model = opt_model
-            self.model_nodes_stats_thread[model_id].tab_name = model_name
-            self.model_nodes_stats_thread[model_id].unique_id = model_id
-            self.model_nodes_stats_thread[model_id].start()
-
-            progress.step()
-            progress.setLabelText("Calculating Node Type Counts")
-
-            node_type_counts = onnx_utils.get_node_type_counts(opt_model)
-            if len(node_type_counts) < 15:
-                bar_spacing = 40
-            else:
-                bar_spacing = 20
-            model_summary.ui.opHistogramChart.bar_spacing = bar_spacing
-            model_summary.ui.opHistogramChart.set_data(node_type_counts)
-            model_summary.ui.nodes.setText(str(sum(node_type_counts.values())))
-            digest_model.node_type_counts = node_type_counts
-
-            progress.step()
-            progress.setLabelText("Gathering Model Inputs and Outputs")
-
-            # Inputs Table
-            model_summary.ui.inputsTable.setRowCount(
-                len(self.digest_models[model_id].model_inputs)
-            )
-
-            for row_idx, (input_name, input_info) in enumerate(
-                self.digest_models[model_id].model_inputs.items()
-            ):
-                model_summary.ui.inputsTable.setItem(
-                    row_idx, 0, QTableWidgetItem(input_name)
-                )
-                model_summary.ui.inputsTable.setItem(
-                    row_idx, 1, QTableWidgetItem(str(input_info.shape))
-                )
-                model_summary.ui.inputsTable.setItem(
-                    row_idx, 2, QTableWidgetItem(str(input_info.dtype))
-                )
-                model_summary.ui.inputsTable.setItem(
-                    row_idx, 3, QTableWidgetItem(str(input_info.size_kbytes))
-                )
-
-            model_summary.ui.inputsTable.resizeColumnsToContents()
-            model_summary.ui.inputsTable.resizeRowsToContents()
-
-            # Outputs Table
-            model_summary.ui.outputsTable.setRowCount(
-                len(self.digest_models[model_id].model_outputs)
-            )
-            for row_idx, (output_name, output_info) in enumerate(
-                self.digest_models[model_id].model_outputs.items()
-            ):
-                model_summary.ui.outputsTable.setItem(
-                    row_idx, 0, QTableWidgetItem(output_name)
-                )
-                model_summary.ui.outputsTable.setItem(
-                    row_idx, 1, QTableWidgetItem(str(output_info.shape))
-                )
-                model_summary.ui.outputsTable.setItem(
-                    row_idx, 2, QTableWidgetItem(str(output_info.dtype))
-                )
-                model_summary.ui.outputsTable.setItem(
-                    row_idx, 3, QTableWidgetItem(str(output_info.size_kbytes))
-                )
-
-            model_summary.ui.outputsTable.resizeColumnsToContents()
-            model_summary.ui.outputsTable.resizeRowsToContents()
-
-            progress.step()
-            progress.setLabelText("Gathering Model Proto Data")
-
-            # ModelProto Info
-            model_summary.ui.modelProtoTable.setItem(
-                0, 1, QTableWidgetItem(str(opt_model.model_version))
-            )
-            digest_model.model_version = opt_model.model_version
-
-            model_summary.ui.modelProtoTable.setItem(
-                1, 1, QTableWidgetItem(str(opt_model.graph.name))
-            )
-            digest_model.graph_name = opt_model.graph.name
-
-            producer_txt = f"{opt_model.producer_name} {opt_model.producer_version}"
-            model_summary.ui.modelProtoTable.setItem(
-                2, 1, QTableWidgetItem(producer_txt)
-            )
-            digest_model.producer_name = opt_model.producer_name
-            digest_model.producer_version = opt_model.producer_version
-
-            model_summary.ui.modelProtoTable.setItem(
-                3, 1, QTableWidgetItem(str(opt_model.ir_version))
-            )
-            digest_model.ir_version = opt_model.ir_version
-
-            for imp in opt_model.opset_import:
-                row_idx = model_summary.ui.importsTable.rowCount()
-                model_summary.ui.importsTable.insertRow(row_idx)
-                if imp.domain == "" or imp.domain == "ai.onnx":
-                    model_summary.ui.opsetVersion.setText(str(imp.version))
-                    domain = "ai.onnx"
-                    digest_model.opset = imp.version
-                else:
-                    domain = imp.domain
-                model_summary.ui.importsTable.setItem(
-                    row_idx, 0, QTableWidgetItem(str(domain))
-                )
-                model_summary.ui.importsTable.setItem(
-                    row_idx, 1, QTableWidgetItem(str(imp.version))
-                )
-                row_idx += 1
-
-                digest_model.imports[imp.domain] = imp.version
-
-            progress.step()
-            progress.setLabelText("Wrapping Up Model Analysis")
-
-            model_summary.ui.importsTable.resizeColumnsToContents()
-            model_summary.ui.modelProtoTable.resizeColumnsToContents()
-            model_summary.setObjectName(model_name)
-            new_tab_idx = self.ui.tabWidget.count() - 1
-            self.ui.tabWidget.setTabText(new_tab_idx, "".join(model_name))
-            self.ui.tabWidget.setCurrentIndex(new_tab_idx)
-            self.ui.stackedWidget.setCurrentIndex(self.Page.SUMMARY)
-            self.ui.singleModelWidget.show()
-            progress.step()
-
             # Start similarity Analysis
             # Note: Should only be started after the model tab has been created
             png_tmp_path = os.path.join(self.temp_dir.name, model_id)
             os.makedirs(png_tmp_path, exist_ok=True)
             assert os.path.exists(png_tmp_path), f"Error with creating {png_tmp_path}"
-            self.model_similarity_thread[model_id] = SimilarityThread()
-            self.model_similarity_thread[model_id].completed_successfully.connect(
-                self.update_similarity_widget
-            )
-            self.model_similarity_thread[model_id].model_filepath = filepath
-            self.model_similarity_thread[model_id].png_filepath = os.path.join(
-                png_tmp_path, f"heatmap_{model_name}.png"
-            )
-            self.model_similarity_thread[model_id].model_id = model_id
-            self.model_similarity_thread[model_id].start()
-
-            progress.close()
-
-        except FileNotFoundError as e:
-            print(f"File not found: {e.filename}")
-
-    def load_report(self, filepath: str):
-
-        # Ensure the filepath follows a standard formatting:
-        filepath = os.path.normpath(filepath)
-
-        if not os.path.exists(filepath):
-            return
-
-        # Every time a report is loaded we should emulate a model summary button click
-        self.summary_clicked()
-
-        # Before opening the file, check to see if it is already opened.
-        for index in range(self.ui.tabWidget.count()):
-            widget = self.ui.tabWidget.widget(index)
-            if isinstance(widget, modelSummary) and filepath == widget.file:
-                self.ui.tabWidget.setCurrentIndex(index)
-                return
-
-        try:
-
-            progress = ProgressDialog("Loading Digest Report File...", 2, self)
-            QApplication.processEvents()  # Process pending events
-
-            digest_model = DigestReportModel(filepath)
-
-            if not digest_model.is_valid:
-                progress.close()
-                invalid_yaml_dialog = StatusDialog(
-                    title="Warning",
-                    status_message=f"YAML file {filepath} is not a valid digest report",
-                )
-                invalid_yaml_dialog.show()
-
-                return
-
-            model_id = digest_model.unique_id
-
-            # There is no sense in offering to save the report
-            self.stats_save_button_flag[model_id] = False
-            self.similarity_save_button_flag[model_id] = False
-
-            self.digest_models[model_id] = digest_model
-
-            model_summary = modelSummary(digest_model)
-
-            self.ui.tabWidget.addTab(model_summary, "")
-            model_summary.ui.flops.setText("Loading...")
-
-            # Hide some of the components
-            model_summary.ui.similarityCorrelation.hide()
-            model_summary.ui.similarityCorrelationStatic.hide()
-
-            model_summary.file = filepath
-            model_summary.setObjectName(digest_model.model_name)
-            model_summary.ui.modelName.setText(digest_model.model_name)
-            model_summary.ui.modelFilename.setText(filepath)
-            model_summary.ui.generatedDate.setText(datetime.now().strftime("%B %d, %Y"))
-
-            model_summary.ui.parameters.setText(format(digest_model.parameters, ","))
-
-            node_type_counts = digest_model.node_type_counts
-            if len(node_type_counts) < 15:
-                bar_spacing = 40
-            else:
-                bar_spacing = 20
-
-            model_summary.ui.opHistogramChart.bar_spacing = bar_spacing
-            model_summary.ui.opHistogramChart.set_data(node_type_counts)
-            model_summary.ui.nodes.setText(str(sum(node_type_counts.values())))
-
-            progress.step()
-            progress.setLabelText("Gathering Model Inputs and Outputs")
-
-            # Inputs Table
-            model_summary.ui.inputsTable.setRowCount(
-                len(self.digest_models[model_id].model_inputs)
+            png_file_path = os.path.join(
+                png_tmp_path, f"heatmap_{digest_model.model_name}.png"
             )
 
-            for row_idx, (input_name, input_info) in enumerate(
-                self.digest_models[model_id].model_inputs.items()
-            ):
-                model_summary.ui.inputsTable.setItem(
-                    row_idx, 0, QTableWidgetItem(input_name)
-                )
-                model_summary.ui.inputsTable.setItem(
-                    row_idx, 1, QTableWidgetItem(str(input_info.shape))
-                )
-                model_summary.ui.inputsTable.setItem(
-                    row_idx, 2, QTableWidgetItem(str(input_info.dtype))
-                )
-                model_summary.ui.inputsTable.setItem(
-                    row_idx, 3, QTableWidgetItem(str(input_info.size_kbytes))
-                )
+            model_summary.png_file_path = png_file_path
 
-            model_summary.ui.inputsTable.resizeColumnsToContents()
-            model_summary.ui.inputsTable.resizeRowsToContents()
-
-            # Outputs Table
-            model_summary.ui.outputsTable.setRowCount(
-                len(self.digest_models[model_id].model_outputs)
+            similarity_worker = SimilarityWorker(
+                digest_model.filepath, png_file_path, model_id
             )
-            for row_idx, (output_name, output_info) in enumerate(
-                self.digest_models[model_id].model_outputs.items()
-            ):
-                model_summary.ui.outputsTable.setItem(
-                    row_idx, 0, QTableWidgetItem(output_name)
-                )
-                model_summary.ui.outputsTable.setItem(
-                    row_idx, 1, QTableWidgetItem(str(output_info.shape))
-                )
-                model_summary.ui.outputsTable.setItem(
-                    row_idx, 2, QTableWidgetItem(str(output_info.dtype))
-                )
-                model_summary.ui.outputsTable.setItem(
-                    row_idx, 3, QTableWidgetItem(str(output_info.size_kbytes))
-                )
+            similarity_worker.signals.completed.connect(self.update_similarity_widget)
+            self.thread_pool.start(similarity_worker)
 
-            model_summary.ui.outputsTable.resizeColumnsToContents()
-            model_summary.ui.outputsTable.resizeRowsToContents()
-
-            progress.step()
-            progress.setLabelText("Gathering Model Proto Data")
-
-            # ModelProto Info
-            model_summary.ui.modelProtoTable.setItem(
-                0, 1, QTableWidgetItem(str(digest_model.model_data["model_version"]))
-            )
-
-            model_summary.ui.modelProtoTable.setItem(
-                1, 1, QTableWidgetItem(str(digest_model.model_data["graph_name"]))
-            )
-
-            producer_txt = (
-                f"{digest_model.model_data['producer_name']} "
-                f"{digest_model.model_data['producer_version']}"
-            )
-            model_summary.ui.modelProtoTable.setItem(
-                2, 1, QTableWidgetItem(producer_txt)
-            )
-
-            model_summary.ui.modelProtoTable.setItem(
-                3, 1, QTableWidgetItem(str(digest_model.model_data["ir_version"]))
-            )
-
-            for domain, version in digest_model.model_data["import_list"].items():
-                row_idx = model_summary.ui.importsTable.rowCount()
-                model_summary.ui.importsTable.insertRow(row_idx)
-                if domain == "" or domain == "ai.onnx":
-                    model_summary.ui.opsetVersion.setText(str(version))
-                    domain = "ai.onnx"
-
-                model_summary.ui.importsTable.setItem(
-                    row_idx, 0, QTableWidgetItem(str(domain))
-                )
-                model_summary.ui.importsTable.setItem(
-                    row_idx, 1, QTableWidgetItem(str(version))
-                )
-                row_idx += 1
-
-            progress.step()
-            progress.setLabelText("Wrapping Up Model Analysis")
-
-            model_summary.ui.importsTable.resizeColumnsToContents()
-            model_summary.ui.modelProtoTable.resizeColumnsToContents()
-            model_summary.setObjectName(digest_model.model_name)
-            new_tab_idx = self.ui.tabWidget.count() - 1
-            self.ui.tabWidget.setTabText(new_tab_idx, "".join(digest_model.model_name))
-            self.ui.tabWidget.setCurrentIndex(new_tab_idx)
-            self.ui.stackedWidget.setCurrentIndex(self.Page.SUMMARY)
-            self.ui.singleModelWidget.show()
-            progress.step()
-
-            self.update_cards(digest_model, digest_model.unique_id)
-
-            movie = QMovie(":/assets/gifs/load.gif")
-            model_summary.ui.similarityImg.setMovie(movie)
-            movie.start()
-
+        elif isinstance(digest_model, DigestReportModel):
             self.update_similarity_widget(
-                completed_successfully=bool(digest_model.similarity_heatmap_path),
-                model_id=digest_model.unique_id,
+                bool(digest_model.similarity_heatmap_path),
+                model_id=model_id,
                 most_similar="",
                 png_filepath=digest_model.similarity_heatmap_path,
             )
-
-            progress.close()
-
-        except FileNotFoundError as e:
-            print(f"File not found: {e.filename}")
-
-    def load_model(self, file_path: str):
-
-        # Ensure the filepath follows a standard formatting:
-        file_path = os.path.normpath(file_path)
-
-        if not os.path.exists(file_path):
-            return
-
-        file_ext = os.path.splitext(file_path)[-1]
-
-        if file_ext == ".onnx":
-            self.load_onnx(file_path)
-        elif file_ext == ".yaml":
-            self.load_report(file_path)
-        else:
-            bad_ext_dialog = StatusDialog(
-                f"Digest does not support files with the extension {file_ext}",
-                parent=self,
-            )
-            bad_ext_dialog.show()
 
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
@@ -963,79 +569,79 @@ class DigestApp(QMainWindow):
         if not isinstance(current_tab, modelSummary):
             return
 
-        digest_model = current_tab.digest_model
-        if not digest_model.model_name:
-            print("Warning, digest_model model name not set.")
-
-        model_name = str(digest_model.model_name)
-
-        save_directory = QFileDialog(self).getExistingDirectory(
-            self, "Select Directory"
-        )
-
+        save_directory = self._get_save_directory()
         if not save_directory:
             return
 
-        # Check if the directory exists and is writable
-        if not os.path.exists(save_directory) or not os.access(save_directory, os.W_OK):
-            self.show_warning_dialog(
-                f"The directory {save_directory} is not valid or writable."
-            )
+        try:
+            self._save_report_files(current_tab, save_directory)
+        except Exception as exception:  # pylint: disable=broad-except
+            self._handle_save_error(exception)
+        else:
+            self._show_save_success(save_directory)
 
-        save_directory = os.path.join(
-            save_directory, str(digest_model.model_name) + "_reports"
+    def _get_save_directory(self) -> Optional[str]:
+        """Get and validate the save directory from user."""
+        directory = QFileDialog(self).getExistingDirectory(self, "Select Directory")
+        if not directory:
+            return None
+
+        if not os.path.exists(directory) or not os.access(directory, os.W_OK):
+            self.show_warning_dialog(
+                f"The directory {directory} is not valid or writable."
+            )
+            return None
+
+        return directory
+
+    def _save_report_files(self, current_tab, save_directory):
+        model_name = current_tab.ui.modelName.text()
+
+        # Save the node histogram image
+        node_histogram = current_tab.ui.opHistogramChart.grab()
+        node_histogram.save(
+            os.path.join(save_directory, f"{model_name}_histogram.png"), "PNG"
         )
 
-        try:
-            os.makedirs(save_directory, exist_ok=True)
+        # Save csv of node type counts
+        node_type_filepath = os.path.join(
+            save_directory, f"{model_name}_node_type_counts.csv"
+        )
 
-            # Save the node histogram image
-            node_histogram = current_tab.ui.opHistogramChart.grab()
-            node_histogram.save(
-                os.path.join(save_directory, f"{model_name}_histogram.png"), "PNG"
-            )
+        self.digest_models[current_tab.model_id].save_node_type_counts_csv_report(
+            node_type_filepath
+        )
 
-            # Save csv of node type counts
-            node_type_filepath = os.path.join(
-                save_directory, f"{model_name}_node_type_counts.csv"
-            )
-            digest_model.save_node_type_counts_csv_report(node_type_filepath)
+        # Save (copy) the similarity image
+        png_file_path = current_tab.png_file_path
 
-            # Save (copy) the similarity image
-            png_file_path = self.model_similarity_thread[
-                digest_model.unique_id
-            ].png_filepath
-            png_save_path = os.path.join(save_directory, f"{model_name}_heatmap.png")
-            if png_file_path and os.path.exists(png_file_path):
-                shutil.copy(png_file_path, png_save_path)
+        png_save_path = os.path.join(save_directory, f"{model_name}_heatmap.png")
+        if png_file_path and os.path.exists(png_file_path):
+            shutil.copy(png_file_path, png_save_path)
 
-            # Save the text report
-            txt_report_filepath = os.path.join(
-                save_directory, f"{model_name}_report.txt"
-            )
-            digest_model.save_text_report(txt_report_filepath)
+        # Save the text report
+        txt_report_filepath = os.path.join(save_directory, f"{model_name}_report.txt")
+        self.digest_models[current_tab.model_id].save_text_report(txt_report_filepath)
 
-            # Save the yaml report
-            yaml_report_filepath = os.path.join(
-                save_directory, f"{model_name}_report.yaml"
-            )
-            digest_model.save_yaml_report(yaml_report_filepath)
+        # Save the yaml report
+        yaml_report_filepath = os.path.join(save_directory, f"{model_name}_report.yaml")
+        self.digest_models[current_tab.model_id].save_yaml_report(yaml_report_filepath)
 
-            # Save the node list
-            nodes_report_filepath = os.path.join(
-                save_directory, f"{model_name}_nodes.csv"
-            )
+        # Save the node list
+        nodes_report_filepath = os.path.join(save_directory, f"{model_name}_nodes.csv")
 
-            self.save_nodes_csv(nodes_report_filepath, False)
-        except Exception as exception:  # pylint: disable=broad-exception-caught
-            self.status_dialog = StatusDialog(f"{exception}")
-            self.status_dialog.show()
-        else:
-            self.status_dialog = StatusDialog(
-                f"Saved reports to: \n{os.path.abspath(save_directory)}",
-                "Successfully saved reports!",
-            )
-            self.status_dialog.show()
+        self.save_nodes_csv(nodes_report_filepath, False)
+
+    def _handle_save_error(self, exception):
+        self.status_dialog = StatusDialog(f"{exception}")
+        self.status_dialog.show()
+
+    def _show_save_success(self, save_directory):
+        self.status_dialog = StatusDialog(
+            f"Saved reports to: \n{os.path.abspath(save_directory)}",
+            "Successfully saved reports!",
+        )
+        self.status_dialog.show()
 
     def on_dialog_closed(self):
         self.infoDialog = None
@@ -1078,7 +684,7 @@ class DigestApp(QMainWindow):
             raise ValueError("A filepath must be given.")
         current_tab = self.ui.tabWidget.currentWidget()
         if isinstance(current_tab, modelSummary):
-            current_tab.digest_model.save_nodes_csv_report(csv_filepath)
+            self.digest_models[current_tab.model_id].save_nodes_csv_report(csv_filepath)
 
     def save_chart(self, chart_view):
         path, _ = self.save_file_dialog("Save PNG", "PNG(*.png)")
@@ -1095,7 +701,7 @@ class DigestApp(QMainWindow):
             return
 
         model_name = current_tab.ui.modelName.text()
-        model_id = current_tab.digest_model.unique_id
+        model_id = current_tab.model_id
         if model_id in self.nodes_window:
             del self.nodes_window[model_id]
 
@@ -1114,19 +720,23 @@ class DigestApp(QMainWindow):
         self.nodes_window[model_id].open()
 
     def closeEvent(self, event):
-        for thread in self.model_nodes_stats_thread.values():
-            thread.quit()  # Request the thread to stop
-            thread.wait(5000)  # Wait for the thread to finish
+        """Ensure proper cleanup of resources when closing the application."""
+        try:
+            # Close all child windows
+            for window in QApplication.topLevelWidgets():
+                if window != self:
+                    window.close()
 
-        for thread in self.model_similarity_thread.values():
-            thread.quit()  # Request the thread to stop
-            thread.wait(5000)  # Wait for the thread to finish
+            # Cleanup temporary directory
+            if hasattr(self, "temp_dir"):
+                self.temp_dir.cleanup()
 
-        for window in QApplication.topLevelWidgets():
-            if window != self:
-                window.close()
+            # Wait for thread pool to finish
+            if hasattr(self, "thread_pool"):
+                self.thread_pool.waitForDone()
 
-        super().closeEvent(event)
+        finally:
+            super().closeEvent(event)
 
 
 def main():
