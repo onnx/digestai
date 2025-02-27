@@ -279,15 +279,19 @@ class MultiModelSelectionPage(QWidget):
             except DecodeError as error:
                 print(f"Error decoding model {filepath}: {error}")
 
-        progress = ProgressDialog("Processing Models", total_num_models, self)
+        progress = ProgressDialog(
+            "Processing Models",
+            len(serialized_models_paths) + len(report_file_list),
+            self,
+        )
 
         num_duplicates = 0
         self.item_model.clear()
         self.ui.duplicateListWidget.clear()
         for paths in serialized_models_paths.values():
-            progress.step()
             if progress.wasCanceled():
                 break
+            progress.step()
             if len(paths) > 1:
                 num_duplicates += 1
                 self.ui.duplicateListWidget.addItem(paths[0])
@@ -302,9 +306,9 @@ class MultiModelSelectionPage(QWidget):
         duplicate_reports: Dict[str, List[str]] = {}
         processed_files = set()
         for i in range(len(report_file_list)):
-            progress.step()
             if progress.wasCanceled():
                 break
+            progress.step()
             path1 = report_file_list[i]
             if path1 in processed_files:
                 continue  # Skip already processed files
@@ -319,6 +323,8 @@ class MultiModelSelectionPage(QWidget):
                     num_duplicates += 1
                     duplicate_reports[path1].append(path2)
                     processed_files.add(path2)
+
+        progress.close()
 
         for path, dupes in duplicate_reports.items():
             if dupes:
