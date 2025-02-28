@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'huggingface_page.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.8.1
+## Created by: Qt User Interface Compiler version 6.8.2
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -125,13 +125,6 @@ class Ui_huggingfacePage(object):
 
         self.horizontalLayout_2.addWidget(self.hf_search_btn, 0, Qt.AlignmentFlag.AlignVCenter)
 
-        self.hf_info_label_2 = QLabel(self.frame)
-        self.hf_info_label_2.setObjectName(u"hf_info_label_2")
-        self.hf_info_label_2.setStyleSheet(u"")
-        self.hf_info_label_2.setMargin(10)
-
-        self.horizontalLayout_2.addWidget(self.hf_info_label_2)
-
         self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.horizontalLayout_2.addItem(self.horizontalSpacer)
@@ -191,7 +184,6 @@ class Ui_huggingfacePage(object):
 #if QT_CONFIG(shortcut)
         self.hf_search_btn.setShortcut(QCoreApplication.translate("huggingfacePage", u"Return", None))
 #endif // QT_CONFIG(shortcut)
-        self.hf_info_label_2.setText(QCoreApplication.translate("huggingfacePage", u"\u26a0\ufe0f This feature is still in beta. ", None))
         self.open_onnx_btn.setText(QCoreApplication.translate("huggingfacePage", u"Open ONNX", None))
         self.hf_info_label.setText(QCoreApplication.translate("huggingfacePage", u"\u2139\ufe0f TextLabel", None))
     # retranslateUi

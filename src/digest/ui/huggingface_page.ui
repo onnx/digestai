@@ -180,19 +180,6 @@ QPushButton:pressed {
        </widget>
       </item>
       <item>
-       <widget class="QLabel" name="hf_info_label_2">
-        <property name="styleSheet">
-         <string notr="true"/>
-        </property>
-        <property name="text">
-         <string>⚠️ This feature is still in beta. </string>
-        </property>
-        <property name="margin">
-         <number>10</number>
-        </property>
-       </widget>
-      </item>
-      <item>
        <spacer name="horizontalSpacer">
         <property name="orientation">
          <enum>Qt::Orientation::Horizontal</enum>
