@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="digestai",
-    version="1.1.2",
+    version="1.2.0",
     description="Model analysis toolkit",
     author="Philip Colangelo, Daniel Holanda",
     packages=find_packages(where="src"),

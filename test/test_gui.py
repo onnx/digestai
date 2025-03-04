@@ -4,13 +4,14 @@ import os
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 # pylint: disable=no-name-in-module
 from PySide6.QtTest import QTest
 from PySide6.QtCore import Qt, QEventLoop, QTimer, Signal
 from PySide6.QtWidgets import QApplication
 
+from huggingface_hub.hf_api import ModelInfo
 import digest.main
 from digest.node_summary import NodeSummary
 
@@ -189,6 +190,150 @@ class DigestGuiTest(unittest.TestCase):
 
                 self._save_nodes_list(output_file)
                 self._close_current_tab()
+
+    def _navigate_to_huggingface_tab(self):
+        """Navigate to the Huggingface tab."""
+        self.digest_app.ui.stackedWidget.setCurrentIndex(
+            self.digest_app.Page.HUGGINGFACE
+        )
+        QApplication.processEvents()
+
+    def _mock_huggingface_api(self):
+        """Mock the Huggingface API calls."""
+        mock_model = MagicMock(spec=ModelInfo)
+        mock_model.id = "test/model"
+        mock_models = [mock_model]
+
+        # Mock the API calls
+        list_models_patch = patch(
+            "huggingface_hub.hf_api.list_models", return_value=mock_models
+        )
+        list_files_patch = patch(
+            "huggingface_hub.hf_api.list_repo_files", return_value=["model.onnx"]
+        )
+
+        return list_models_patch, list_files_patch
+
+    def test_huggingface_search(self):
+        """Test searching for models on Huggingface."""
+        self._navigate_to_huggingface_tab()
+
+        list_models_patch, list_files_patch = self._mock_huggingface_api()
+        with list_models_patch as mock_list_models, list_files_patch as mock_list_files:
+            hf_page = self.digest_app.ui.stackedWidget.currentWidget()
+
+            hf_page.ui.hf_search_text.setPlainText("test model")
+            QTest.mouseClick(hf_page.ui.hf_search_btn, Qt.MouseButton.LeftButton)
+
+            self.assertTrue(
+                self._wait_for_signal(hf_page.search_thread.signals.completed),
+                "Huggingface search did not complete within timeout",
+            )
+
+            mock_list_models.assert_called_once()
+            mock_list_files.assert_called_once_with("test/model")
+
+            model = hf_page.ui.hf_column_view.model()
+            self.assertIsNotNone(model, "Model should be set after search")
+            self.assertEqual(model.rowCount(), 1, "Expected one model in results")
+
+    def test_huggingface_model_selection(self):
+        """Test selecting a model from Huggingface search results."""
+        self._navigate_to_huggingface_tab()
+
+        list_models_patch, list_files_patch = self._mock_huggingface_api()
+        with list_models_patch as _, list_files_patch as _:
+            hf_page = self.digest_app.ui.stackedWidget.currentWidget()
+
+            hf_page.ui.hf_search_text.setPlainText("test model")
+            QTest.mouseClick(hf_page.ui.hf_search_btn, Qt.MouseButton.LeftButton)
+
+            self.assertTrue(
+                self._wait_for_signal(hf_page.search_thread.signals.completed),
+                "Huggingface search did not complete within timeout",
+            )
+
+            model_view = hf_page.ui.hf_column_view
+            parent_index = model_view.model().index(0, 0)
+            model_view.setCurrentIndex(parent_index)
+
+            self.assertFalse(
+                hf_page.ui.open_onnx_btn.isEnabled(),
+                "Download button should be disabled when parent item is selected",
+            )
+
+            child_index = model_view.model().index(0, 0, parent_index)
+            model_view.setCurrentIndex(child_index)
+
+            selection = model_view.selectionModel().selection()
+            hf_page.on_column_view_selection_change(selection)
+
+            self.assertTrue(
+                hf_page.ui.open_onnx_btn.isEnabled(),
+                "Download button should be enabled when ONNX file is selected",
+            )
+
+            self.assertEqual(
+                hf_page.currently_selected_hf_onnx["repo_id"], "test/model"
+            )
+            self.assertEqual(
+                hf_page.currently_selected_hf_onnx["onnx_file"], "model.onnx"
+            )
+
+    def test_huggingface_download(self):
+        """Test downloading a model from Huggingface."""
+        self._navigate_to_huggingface_tab()
+
+        list_models_patch, list_files_patch = self._mock_huggingface_api()
+        with list_models_patch as _, list_files_patch as _:
+            hf_page = self.digest_app.ui.stackedWidget.currentWidget()
+
+            hf_page.ui.hf_search_text.setPlainText("test model")
+            QTest.mouseClick(hf_page.ui.hf_search_btn, Qt.MouseButton.LeftButton)
+
+            self.assertTrue(
+                self._wait_for_signal(hf_page.search_thread.signals.completed),
+                "Huggingface search did not complete within timeout",
+            )
+
+            model_view = hf_page.ui.hf_column_view
+            parent_index = model_view.model().index(0, 0)
+            model_view.setCurrentIndex(parent_index)
+
+            child_index = model_view.model().index(0, 0, parent_index)
+            model_view.setCurrentIndex(child_index)
+
+            selection = model_view.selectionModel().selection()
+            hf_page.on_column_view_selection_change(selection)
+
+            self.assertEqual(
+                hf_page.currently_selected_hf_onnx["repo_id"], "test/model"
+            )
+            self.assertEqual(
+                hf_page.currently_selected_hf_onnx["onnx_file"], "model.onnx"
+            )
+
+            with patch("digest.huggingface_page.hf_hub_download") as mock_download:
+                mock_download.return_value = "/tmp/fake/path/model.onnx"
+
+                self.assertTrue(
+                    hf_page.ui.open_onnx_btn.isEnabled(),
+                    "Download button should be enabled when ONNX file is selected",
+                )
+
+                QTest.mouseClick(hf_page.ui.open_onnx_btn, Qt.MouseButton.LeftButton)
+
+                self.assertTrue(
+                    self._wait_for_signal(hf_page.model_signal),
+                    "Model signal did not emit.",
+                )
+
+                # Process events.
+                QApplication.processEvents()
+
+                mock_download.assert_called_once_with(
+                    "test/model", filename="model.onnx", force_download=True
+                )
 
     def _save_nodes_list(self, expected_output):
         """Helper to handle nodes list saving logic"""

@@ -1,10 +1,10 @@
 # Copyright(C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
-from typing import Dict, Optional, List
+from typing import Dict, Optional
 import logging
 
 # pylint: disable=no-name-in-module
-from PySide6.QtWidgets import QWidget, QApplication
+from PySide6.QtWidgets import QWidget
 from PySide6.QtGui import (
     QStandardItem,
     QStandardItemModel,
@@ -18,13 +18,15 @@ from PySide6.QtCore import (
 from huggingface_hub import hf_api, hf_hub_download
 from huggingface_hub.hf_api import ModelInfo
 from digest.ui.huggingface_page_ui import Ui_huggingfacePage
+from digest.dialog import ProgressDialog
 
 logger = logging.getLogger("huggingface_hub")
 logger.setLevel(logging.INFO)
 
 
 class SearchSignals(QObject):
-    completed = Signal(list, str)
+    completed = Signal(dict, str)  # Changed to emit processed data directly
+    started = Signal(str)  # Signal to indicate search has started
 
 
 class HFSearchThread(QThread):
@@ -40,6 +42,10 @@ class HFSearchThread(QThread):
         if not self.search_text:
             raise ValueError("Search text is not set.")
 
+        # Signal that search has started
+        self.signals.started.emit(self.search_text)
+
+        # First, search for models
         if "huggingface.co/" in self.search_text:
             search_text = self.search_text.split("huggingface.co/")[-1]
             hf_models = [hf_api.model_info(repo_id=search_text)]
@@ -48,12 +54,31 @@ class HFSearchThread(QThread):
                 hf_api.list_models(search=self.search_text, library="onnx")
             )
 
-        self.signals.completed.emit(hf_models, self.search_text)
+        # Then, process the models to get their files
+        column_data = {}
+        for hf_model in hf_models:
+            column_data[hf_model.id] = {
+                "onnx": [],
+                "url": hf_model.id,
+            }
+            try:
+                all_repo_files = hf_api.list_repo_files(hf_model.id)
+                all_onnx_files = [f for f in all_repo_files if f.endswith(".onnx")]
+                for onnx_file in all_onnx_files:
+                    column_data[hf_model.id]["onnx"].append(onnx_file)
+            except hf_api.HTTPError as err:
+                column_data[hf_model.id]["onnx"].append("Error accessing repo")
+                print(f"Error accessing model {hf_model}: {err}")
+                continue
+
+        # Emit the processed data directly
+        self.signals.completed.emit(column_data, self.search_text)
 
 
 class DownloadSignal(QObject):
     progress = Signal(int)  # Signal to emit the download progress (0-100)
     finished = Signal(str)
+    started = Signal(str)  # Signal to indicate download has started
 
 
 class HFDownloadThread(QThread):
@@ -64,8 +89,19 @@ class HFDownloadThread(QThread):
         self.signals = DownloadSignal()
 
     def run(self):
-        path = hf_hub_download(self.repo_id, filename=self.filename)
-        self.signals.finished.emit(path)
+        self.signals.started.emit(self.filename)
+
+        try:
+            # Download the file
+            path = hf_hub_download(
+                self.repo_id, filename=self.filename, force_download=True
+            )
+
+            # Signal completion
+            self.signals.finished.emit(path)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            print(f"Error downloading file: {e}")
+            self.signals.finished.emit("")  # Empty string indicates error
 
 
 class HuggingfacePage(QWidget):
@@ -89,6 +125,9 @@ class HuggingfacePage(QWidget):
         self.ui.hf_search_text.returnPressed.connect(self.ui.hf_search_btn.click)
         self.ui.hf_search_btn.clicked.connect(self.on_search_btn_clicked)
         self.ui.open_onnx_btn.clicked.connect(self.download_hf_onnx_model)
+
+        self.download_progress_dialog = None
+        self.search_progress_dialog = None
 
         self.search_thread = None
         self.download_thread = None
@@ -136,35 +175,60 @@ class HuggingfacePage(QWidget):
         return None  # Return None if no leaf is selected
 
     def on_search_btn_clicked(self):
-        QApplication.processEvents()  # ensure the label is updated before the api call
         search_text = self.ui.hf_search_text.toPlainText().strip()
         if not search_text:
             return
 
-        self.update_message_label(info_message="Searching huggingface...")
+        # Create and configure the search thread
         self.search_thread = HFSearchThread(search_text)
-        self.search_thread.signals.completed.connect(self.list_hf_models)
-        self.search_thread.search_text = search_text
+        self.search_thread.signals.started.connect(self.on_search_started)
+        self.search_thread.signals.completed.connect(self.on_search_completed)
+
+        # Start the search thread
         self.search_thread.start()
 
-    def list_hf_models(self, hf_models: List[ModelInfo], search_text: str):
+    def on_search_started(self, search_text):
+        # Create indeterminate progress dialog for search
+        self.search_progress_dialog = ProgressDialog(
+            f"Searching for '{search_text}'", 0, self
+        )
+        self.search_progress_dialog.setWindowTitle("Searching Huggingface")
+        self.search_progress_dialog.setMinimum(0)
+        self.search_progress_dialog.setMaximum(0)  # Makes it indeterminate
 
+        # Connect cancel button
+        self.search_progress_dialog.canceled.connect(self.cancel_search)
+
+        # Show the dialog
+        self.search_progress_dialog.show()
+
+        # Update message
+        self.update_message_label(info_message="Searching huggingface...")
+
+    def on_search_completed(self, column_data, search_text):
+        # Close the progress dialog
+        if self.search_progress_dialog:
+            self.search_progress_dialog.close()
+            self.search_progress_dialog = None
+
+        # Update the UI with the processed data
+        self.update_model_list_view(column_data, search_text)
+
+    def cancel_search(self):
+        if self.search_thread and self.search_thread.isRunning():
+            # Terminate the search thread
+            self.search_thread.terminate()
+            self.search_thread.wait()
+            self.update_message_label(info_message="Search canceled")
+
+        # Close the progress dialog if it's open
+        if self.search_progress_dialog:
+            self.search_progress_dialog.close()
+            self.search_progress_dialog = None
+
+    def update_model_list_view(self, column_data, search_text):
+        """Update the UI with the processed model data"""
         model = QStandardItemModel()
-        column_data = {}
-        for hf_model in hf_models:
-            column_data[hf_model.id] = {
-                "onnx": [],
-                "url": hf_model.id,
-            }
-            try:
-                all_repo_files = hf_api.list_repo_files(hf_model.id)
-                all_onnx_files = [f for f in all_repo_files if f.endswith(".onnx")]
-                for onnx_file in all_onnx_files:
-                    column_data[hf_model.id]["onnx"].append(onnx_file)
-            except hf_api.HTTPError as err:
-                column_data[hf_model.id]["onnx"].append("Error accessing repo")
-                print(f"Error accessing model {hf_model}: {err}")
-                continue
 
         parentItem = model.invisibleRootItem()
         for model_name, model_details in column_data.items():
@@ -179,7 +243,7 @@ class HuggingfacePage(QWidget):
             self.on_column_view_selection_change
         )
 
-        if not hf_models:
+        if not column_data:
             self.update_message_label(
                 warn_message=f"No ONNX models were found from searching {search_text}"
             )
@@ -198,12 +262,44 @@ class HuggingfacePage(QWidget):
 
         self.download_thread = HFDownloadThread(repo_id, onnx_file)
 
+        # Create progress dialog without steps (indeterminate)
+        self.download_progress_dialog = ProgressDialog(
+            f"Downloading {onnx_file}", 0, self
+        )
+        self.download_progress_dialog.setWindowTitle("Downloading Model")
+        self.download_progress_dialog.setMinimum(0)
+        self.download_progress_dialog.setMaximum(0)
+
+        # Connect signals
+        self.download_thread.signals.started.connect(
+            lambda filename: self.download_progress_dialog.show()
+        )
+
         self.download_thread.signals.finished.connect(
             lambda path: (
-                self.currently_selected_hf_onnx.update({"cache": path}),
-                self.model_signal.emit(path),
-                self.update_message_label(info_message=f"Downloaded model to {path}"),
+                (
+                    self.currently_selected_hf_onnx.update({"cache": path})
+                    if path
+                    else None
+                ),
+                self.download_progress_dialog.close(),
+                self.model_signal.emit(path) if path else None,
+                self.update_message_label(
+                    info_message=(
+                        f"Downloaded model to {path}" if path else "Download failed"
+                    )
+                ),
             )
         )
 
+        # Handle cancel button in progress dialog
+        self.download_progress_dialog.canceled.connect(self.cancel_download)
+
         self.download_thread.start()
+
+    def cancel_download(self):
+        if self.download_thread and self.download_thread.isRunning():
+            # Terminate the download thread
+            self.download_thread.terminate()
+            self.download_thread.wait()
+            self.update_message_label(info_message="Download canceled")
