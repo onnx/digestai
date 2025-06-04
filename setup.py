@@ -12,7 +12,7 @@ setup(
     include_package_data=True,
     package_data={"digest": ["subgraph_analysis/database.zip"]},
     install_requires=[
-        "pyside6 >= 6.7.0",
+        "pyside6==6.8.3",
         "onnx < 1.16.2",
         "onnxruntime >= 1.17.0",
         "pyqtgraph >= 0.13.7",
