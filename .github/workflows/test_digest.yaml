@@ -23,12 +23,12 @@ jobs:
       run:
         shell: bash -el {0}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - name: Install Linux Qt runtime dependency
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libegl1
       - name: Set up Miniconda with 64-bit Python
-        uses: conda-incubator/setup-miniconda@v2
+        uses: conda-incubator/setup-miniconda@v4
         with:
           miniconda-version: "latest"
           activate-environment: digestai
