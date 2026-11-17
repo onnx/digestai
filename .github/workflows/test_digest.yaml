@@ -18,12 +18,15 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python-version: ["3.9", "3.10"]
+        python-version: ["3.11", "3.12", "3.13"]
     defaults:
       run:
         shell: bash -el {0}
     steps:
       - uses: actions/checkout@v3
+      - name: Install Linux Qt runtime dependency
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libegl1
       - name: Set up Miniconda with 64-bit Python
         uses: conda-incubator/setup-miniconda@v2
         with:
@@ -34,7 +37,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .
-          pip install pylint pytest
+          pip install "pylint<4" pytest
           python -m pip check
       - name: Lint with PyLint
         run: |
@@ -44,7 +47,7 @@ jobs:
           pylint test --disable E0401
       - name: Test summary reports
         run: |
-          pytest test/test_reports.py
+          pytest test/test_reports.py test/test_huggingface.py
       # Please see contributing notes in the README 
       # to understand why this is commented and how to run it.
       # - name: Test GUI
