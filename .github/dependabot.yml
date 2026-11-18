@@ -1,0 +1,19 @@
+# Dependabot version updates. See
+# https://docs.github.com/code-security/dependabot/working-with-dependabot/dependabot-options-reference
+#
+# Only GitHub Actions are updated. Python dependencies are left out on purpose:
+# pyside6 is pinned for pyqtgraph compatibility (#23), the other requirements are
+# lower bounds, and Dependabot cannot update pixi.lock yet
+# (https://github.com/dependabot/dependabot-core/issues/16870).
+
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns: ["*"]
