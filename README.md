@@ -232,6 +232,8 @@ To get in touch, please reach out to us at [digestai@amd.com](mailto:digestai@am
 
 This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE.txt) file for details.
 
+The project follows the [REUSE](https://reuse.software) specification: each file carries SPDX copyright and license information, either in a header or in [REUSE.toml](REUSE.toml). New source files should start with the same SPDX license header as the existing ones. Check with `pipx run reuse lint`.
+
 ## Code of Conduct
 The ONNX code of conduct is described at [ONNX Code of Conduct](https://onnx.ai/codeofconduct.html).
 
