@@ -17,6 +17,7 @@ from PySide6.QtCore import (
 )
 from huggingface_hub import hf_api, hf_hub_download
 from huggingface_hub.hf_api import ModelInfo
+from huggingface_hub.utils import HfHubHTTPError
 from digest.ui.huggingface_page_ui import Ui_huggingfacePage
 from digest.dialog import ProgressDialog
 
@@ -51,7 +52,9 @@ class HFSearchThread(QThread):
             hf_models = [hf_api.model_info(repo_id=search_text)]
         else:
             hf_models = list(
-                hf_api.list_models(search=self.search_text, library="onnx")
+                hf_api.list_models(
+                    search=self.search_text, filter="library:onnx"
+                )
             )
 
         # Then, process the models to get their files
@@ -66,7 +69,7 @@ class HFSearchThread(QThread):
                 all_onnx_files = [f for f in all_repo_files if f.endswith(".onnx")]
                 for onnx_file in all_onnx_files:
                     column_data[hf_model.id]["onnx"].append(onnx_file)
-            except hf_api.HTTPError as err:
+            except HfHubHTTPError as err:
                 column_data[hf_model.id]["onnx"].append("Error accessing repo")
                 print(f"Error accessing model {hf_model}: {err}")
                 continue

@@ -12,15 +12,15 @@ jobs:
     runs-on: windows-latest 
     strategy:
       matrix:
-        python-version: ["3.9", "3.10"]
+        python-version: ["3.11", "3.13"]
     defaults:
       run:
         shell: bash -el {0}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - name: Set up Miniconda with 64-bit Python
-        uses: conda-incubator/setup-miniconda@v2
+        uses: conda-incubator/setup-miniconda@v4
         with:
           miniconda-version: "latest"
           activate-environment: digestai

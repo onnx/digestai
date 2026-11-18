@@ -70,7 +70,15 @@ class TestDigestReports(unittest.TestCase):
                     compare_yaml_files(
                         TEST_SUMMARY_YAML_REPORT,
                         yaml_report_filepath,
-                        skip_keys=["report_date", "model_file", "digest_version"],
+                        # import_list is excluded because the opset domains that
+                        # onnxruntime's optimizer stamps into the optimized model
+                        # vary across onnxruntime versions.
+                        skip_keys=[
+                            "report_date",
+                            "model_file",
+                            "digest_version",
+                            "import_list",
+                        ],
                     )
                 )
 

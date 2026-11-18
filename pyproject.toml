@@ -1,3 +1,47 @@
 [build-system]
-requires = ["setuptools>=64", "wheel"]
+requires = ["setuptools>=77.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "digestai"
+version = "1.2.0"
+description = "Model analysis toolkit"
+authors = [
+    { name = "Philip Colangelo" },
+    { name = "Daniel Holanda" },
+]
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "pyside6==6.8.3",
+    "onnx>=1.17.0",
+    "onnxruntime>=1.19.0",
+    "pyqtgraph>=0.13.7",
+    "huggingface_hub>=0.23.0",
+    "pandas",
+    "matplotlib",
+    "networkx",
+    "prettytable",
+    "numpy",
+    "platformdirs>=4.2.2",
+    "pyyaml>=6.0.1",
+    "psutil>=6.0.0",
+]
+
+[project.scripts]
+digest = "digest.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+digest = ["subgraph_analysis/database.zip"]

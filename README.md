@@ -11,8 +11,8 @@ DigestAI
 
 <h3>DigestAI is a powerful model analysis tool that extracts insights from your models, enabling optimization and direct modification.</h3>
 
-[![python](https://img.shields.io/badge/python-3.10-blue)](https://github.com/onnx/digestai)
-![version](https://img.shields.io/badge/release-1.0-green)
+[![python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](https://github.com/onnx/digestai)
+![version](https://img.shields.io/badge/release-1.2-green)
 [![license](https://img.shields.io/badge/license-Apache2.0-blue)](https://github.com/onnx/digestai/blob/master/LICENSE)
 
 ![logo](src/digest/assets/images/banner.png)
@@ -66,7 +66,7 @@ For more insights on Digest AI, see our announcement blog [here](https://www.amd
 1. Create a Conda Environment (recommended):
 
     ```bash
-    conda create -n digestai python=3.10
+    conda create -n digestai python=3.11
     conda activate digestai
     ```
 
@@ -220,7 +220,7 @@ We welcome contributions! If you'd like to get involved, please:
 1. Run GUI Test Locally: Before submitting your PR, verify your changes pass the local GUI test. This test is currently not part of our CI workflow and must be run manually from the digestai root directory using:
 
 ```bash
-pip install pytest 
+pip install pytest "pylint<4"
 pytest test/test_gui.py
 ```
 
