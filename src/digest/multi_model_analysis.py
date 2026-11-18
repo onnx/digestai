@@ -6,7 +6,6 @@ import csv
 from typing import List, Dict, Union, Optional
 from collections import Counter, defaultdict, OrderedDict
 
-# pylint: disable=no-name-in-module
 from PySide6.QtWidgets import QWidget, QTableWidgetItem, QFileDialog
 from PySide6.QtCore import Qt
 from digest.dialog import ProgressDialog, StatusDialog

@@ -1,5 +1,3 @@
-# pylint: disable=wrong-import-position
-
 import sys
 import unittest
 from pathlib import Path

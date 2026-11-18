@@ -4,7 +4,6 @@ import os
 from typing import List, Union, Optional
 import psutil
 
-# pylint: disable=no-name-in-module
 from PySide6.QtWidgets import QWidget, QApplication
 from PySide6.QtCore import QFile, QTextStream
 

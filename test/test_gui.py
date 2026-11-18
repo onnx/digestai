@@ -6,7 +6,6 @@ import tempfile
 import unittest
 from unittest.mock import patch, MagicMock
 
-# pylint: disable=no-name-in-module
 from PySide6.QtTest import QTest
 from PySide6.QtCore import Qt, QEventLoop, QTimer, Signal
 from PySide6.QtWidgets import QApplication
