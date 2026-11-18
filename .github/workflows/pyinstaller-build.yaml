@@ -7,6 +7,9 @@ on:
   pull_request:
     branches: ["main"]
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: windows-latest 
@@ -18,9 +21,11 @@ jobs:
         shell: bash -el {0}
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Set up Miniconda with 64-bit Python
-        uses: conda-incubator/setup-miniconda@v4
+        uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb # v4.1.0
         with:
           miniconda-version: "latest"
           activate-environment: digestai
@@ -37,6 +42,5 @@ jobs:
         run: pyinstaller main.spec
 
       - name: Verify executable creation
-        run: dir dist\\digest.exe
-        if: ${{ success() }}
-        shell: cmd
+        run: Get-Item dist/digest.exe
+        shell: pwsh
