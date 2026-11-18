@@ -1,11 +1,12 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
 import sys
+import sysconfig
 from PyInstaller.utils.hooks import copy_metadata
 
 proj_dir = os.path.dirname(os.path.abspath(sys.argv[0])) 
-conda_dir = os.environ["CONDA_PREFIX"]
-site_packages = os.path.join(conda_dir, "Lib/site-packages")
+# site-packages of the running interpreter (pixi, conda or venv alike)
+site_packages = sysconfig.get_paths()["purelib"]
 icon_filepath = os.path.normpath(os.path.join(proj_dir, "src/digest/assets/icons/digest_logo.ico"))
 dist_info_path = os.path.join(proj_dir, "src/digestai.egg-info")
 
