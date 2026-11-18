@@ -1,0 +1,24 @@
+# Check that every file has copyright and license information.
+# https://reuse.software
+
+name: REUSE
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions: {}
+
+jobs:
+  reuse:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # check out the repository
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Lint with reuse
+        run: pipx run reuse==6.3.0 lint
