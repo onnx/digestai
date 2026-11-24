@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import logging
 from typing import List, Optional
 from PySide6.QtCore import Signal, QRunnable, QObject
 import matplotlib.pyplot as plt
@@ -52,9 +53,9 @@ class SimilarityWorker(QRunnable):
         except Exception as e:  # noqa: BLE001
             most_similar = ""
             self.signals.completed.emit(
-                False, self.model_id, most_similar, self.png_filepath, df_sorted
+                False, self.model_id, most_similar, self.png_filepath, pd.DataFrame()
             )
-            print(f"Issue creating similarity analysis: {e}")
+            logging.getLogger(__name__).exception("Issue creating similarity analysis: %s", e)
 
 
 def post_process(

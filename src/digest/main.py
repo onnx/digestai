@@ -45,6 +45,7 @@ from digest.ui.mainwindow_ui import Ui_MainWindow
 from digest.modelsummary import modelSummary
 from digest.node_summary import NodeSummary
 from digest.qt_utils import apply_dark_style_sheet
+from digest.logging_utils import configure_logging
 from digest.model_class.digest_model import SupportedModelTypes, DigestModel
 from digest.model_class.digest_onnx_model import (
     DigestOnnxModel,
@@ -723,6 +724,7 @@ class DigestApp(QMainWindow):
     def closeEvent(self, event):
         """Ensure proper cleanup of resources when closing the application."""
         try:
+            self.multimodelselection_page.stop_workers()
             # Close all child windows
             for window in QApplication.topLevelWidgets():
                 if window != self:
@@ -754,6 +756,7 @@ def main():
     )
 
     args = parser.parse_args()
+    configure_logging()
 
     app = QApplication(sys.argv)
     app.setStyle("Fusion")

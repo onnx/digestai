@@ -5,6 +5,7 @@
 import os
 from datetime import datetime
 import copy
+import logging
 from typing import Dict, List, Optional
 from platformdirs import user_cache_dir
 
@@ -14,7 +15,6 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QSizePolicy,
-    QLayoutItem,
     QFormLayout,
     QFileDialog,
 )
@@ -27,6 +27,7 @@ from digest.qt_utils import apply_dark_style_sheet
 from utils import onnx_utils
 
 ROOT_FOLDER = os.path.dirname(os.path.abspath(__file__))
+LOGGER = logging.getLogger(__name__)
 
 
 class ModernLineEdit(QLineEdit):
@@ -57,12 +58,11 @@ class FreezeInputs(QWidget):
         self.ui.warningLabel.hide()
 
         user_cache_directory = user_cache_dir("digest")
-        os.makedirs(user_cache_directory, exist_ok=True)
         self.save_directory: str = user_cache_directory
 
         self.model_name = model_name
         self.model_proto = model_proto
-        self.proto_copy = copy.deepcopy(model_proto)
+        self.model_is_valid = True
 
         self.ui.selectDirBtn.setEnabled(True)
         self.ui.applyShapesBtn.setEnabled(False)
@@ -90,7 +90,8 @@ class FreezeInputs(QWidget):
         try:
             checker.check_model(model_proto, full_check=True)
         except checker.ValidationError as exp:
-            print(f"Model did not pass checker: {exp}")
+            LOGGER.warning("Model did not pass checker: %s", exp)
+            self.model_is_valid = False
             self.show_warning_and_disable_page()
 
     def select_directory(self):
@@ -133,78 +134,86 @@ class FreezeInputs(QWidget):
         self.ui.inputsTable.resizeRowsToContents()
 
     def check_form_complete(self):
-        for i in range(self.ui.formLayout.count()):
-            item = self.ui.formLayout.itemAt(i)
-            if isinstance(item, QLayoutItem) and item.widget() is not None:
-                widget = item.widget()
-                if isinstance(widget, QLineEdit) and not widget.text().strip():
-                    self.ui.applyShapesBtn.setEnabled(False)
-                    return
+        try:
+            self.read_dimensions()
+        except ValueError:
+            self.ui.applyShapesBtn.setEnabled(False)
+        else:
+            self.ui.applyShapesBtn.setEnabled(self.model_is_valid)
 
-        self.ui.applyShapesBtn.setEnabled(True)
+    def read_dimensions(self) -> Dict[str, int]:
+        dims = {}
+        for i in range(self.ui.formLayout.rowCount()):
+            label = self.ui.formLayout.itemAt(i, QFormLayout.ItemRole.LabelRole).widget()
+            field = self.ui.formLayout.itemAt(i, QFormLayout.ItemRole.FieldRole).widget()
+            text = field.text().strip()
+            if not text.isascii() or not text.isdecimal() or not 0 < int(text) < 2**63:
+                raise ValueError("Enter a positive integer for every dynamic dimension.")
+            dims[label.text()] = int(text)
+        return dims
 
     def apply_static_shapes(self) -> None:
+        if not self.model_is_valid:
+            return
+        try:
+            dims = self.read_dimensions()
+        except ValueError as error:
+            self.update_message_label(warn_message=str(error))
+            return
 
+        # Every attempt starts from the original model, including retries after
+        # cancellation or failed shape inference.
+        proto_copy = copy.deepcopy(self.model_proto)
         status = ProgressDialog(
             "Applying static shapes...",
-            self.ui.formLayout.rowCount() + len(self.model_proto.graph.input),
+            len(self.model_proto.graph.input) + 2,
+            self,
         )
         status.show()
-
-        # Given the enable feature of the apply shapes button we are guaranteed
-        # to arrive in this function with shapes for each dynamic dim.
-        dims: Dict[str, int] = {}
-        for i in range(self.ui.formLayout.rowCount()):
-            if status.wasCanceled():
-                break
-            status.step()
-            label_item = self.ui.formLayout.itemAt(i, QFormLayout.ItemRole.LabelRole)
-            field_item = self.ui.formLayout.itemAt(i, QFormLayout.ItemRole.FieldRole)
-            if label_item and field_item:
-                label = label_item.widget()
-                line_edit = field_item.widget()
-                if isinstance(label, QLabel) and isinstance(line_edit, QLineEdit):
-                    label_text = label.text()
-                    line_edit_value = int(line_edit.text())
-                    dims[label_text] = line_edit_value
-
-        for tensor in self.model_proto.graph.input:
-            if status.wasCanceled():
-                break
-            status.step()
-            tensor_shape = []
-            for dim in tensor.type.tensor_type.shape.dim:
-                if dim.dim_param in dims:
-                    tensor_shape.append(dims[dim.dim_param])
-                elif dim.dim_value:
-                    tensor_shape.append(dim.dim_value)
-
-            ort_fixed.make_input_shape_fixed(
-                self.proto_copy.graph, tensor.name, tensor_shape
-            )
-
+        self.ui.applyShapesBtn.setEnabled(False)
         try:
+            for tensor in self.model_proto.graph.input:
+                status.step()
+                if status.wasCanceled():
+                    return
+                tensor_shape = []
+                for dim in tensor.type.tensor_type.shape.dim:
+                    if dim.dim_param in dims:
+                        tensor_shape.append(dims[dim.dim_param])
+                    elif dim.HasField("dim_value"):
+                        tensor_shape.append(dim.dim_value)
+                    else:
+                        raise ValueError("An unnamed dynamic dimension cannot be frozen.")
+                ort_fixed.make_input_shape_fixed(proto_copy.graph, tensor.name, tensor_shape)
+
             inferred_model = shape_inference.infer_shapes(
-                self.proto_copy, strict_mode=True, data_prop=True
+                proto_copy, strict_mode=True, data_prop=True
             )
+            checker.check_model(inferred_model, full_check=True)
+            status.step()
+            if status.wasCanceled():
+                return
             status.setLabelText("Saving static model")
-            name_id = datetime.now().strftime("%Y%m%d%H%M%S")
+            name_id = datetime.now().strftime("%Y%m%d%H%M%S%f")
             static_model_filename = f"{self.model_name}_static_{name_id}.onnx"
             static_model_filepath = os.path.join(
                 self.save_directory, static_model_filename
             )
+            os.makedirs(self.save_directory, exist_ok=True)
             save(inferred_model, static_model_filepath)
-            # We re-copy over the static model so that the user can create another variant
-            self.proto_copy = copy.deepcopy(self.model_proto)
+            self.update_message_label(info_message=f"Saved static model to {static_model_filepath}")
             status.setLabelText("Opening static model")
             self.complete_signal.emit(static_model_filepath)
-        except checker.ValidationError as e:
-            self.show_warning_and_disable_page()
-            print(f"Model did not pass checker: {e}")
+        except Exception as error:  # noqa: BLE001 -- report failures at the GUI boundary
+            LOGGER.exception("Failed to freeze model %s", self.model_name)
+            self.update_message_label(warn_message=f"Could not freeze the model: {error}")
+        finally:
             status.close()
+            self.check_form_complete()
 
     def show_warning_and_disable_page(self):
         self.ui.warningLabel.show()
+        self.ui.applyShapesBtn.setEnabled(False)
         for i in range(self.ui.formLayout.rowCount()):
             field_item = self.ui.formLayout.itemAt(i, QFormLayout.ItemRole.FieldRole)
             if field_item:

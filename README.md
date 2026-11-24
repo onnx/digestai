@@ -124,6 +124,10 @@ Digest AI also includes support for multi-model analysis. By clicking the “Mul
 
 This will load a new view where the left pane will list unique models, while the right pane will indicate duplicates.
 
+Folder scanning runs in the background. Use Cancel to stop scanning; the current
+file may need to finish loading before cancellation completes. Unreadable files
+are skipped with a warning, and scanning stops if system memory usage reaches 90%.
+
 ### Hugging Face Module
 
 Digest AI also includes a Hugging Face module that enables users to download ONNX models directly from the Hugging Face hub without leaving Digest AI. You can search for a model, select it, and click Open. Digest AI will download the model, analyze it, and take you to the summary page.
@@ -138,6 +142,10 @@ This feature is currently in Beta. To enable it:
 Some models may have dynamic input shapes, which can affect certain calculations like FLOPs. If you encounter this, Digest AI will display a warning message. To freeze a model with dynamic shapes, scroll down to the “Input Tensor” information section and click the blue snowflake icon next to the table.
 
 This will open a utility where you can specify static dimensions for the inputs, and you can then save the modified model with static shapes.
+
+Enter positive integers for dynamic dimensions. If shape validation or saving
+fails, the window shows the error and allows you to correct the inputs and retry.
+Canceling does not save or open a partially modified model.
 
 ## Digest API
 
@@ -218,6 +226,12 @@ pixi run test-gui
 ```
 
 ## Contact
+
+For GUI troubleshooting, open the information dialog to find the diagnostic log
+location. GUI launches record Python stdout/stderr and unhandled exceptions in
+`digest.log`, with up to three rotated backups of 2 MiB each. Native-library output
+written directly to operating-system file descriptors is not captured. Review logs
+before sharing them: they may include local model paths and error details.
 
 To get in touch, please reach out to us at [digestai@amd.com](mailto:digestai@amd.com).
 

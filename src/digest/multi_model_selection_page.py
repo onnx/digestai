@@ -3,11 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-import glob
 from typing import List, Optional, Dict, Union
-from collections import defaultdict
-from google.protobuf.message import DecodeError
-import onnx
 
 from PySide6.QtWidgets import (
     QWidget,
@@ -22,9 +18,10 @@ from PySide6.QtCore import Qt, Signal, QThread
 from digest.dialog import WarnDialog, ProgressDialog
 from digest.ui.multimodelselection_page_ui import Ui_MultiModelSelection
 from digest.multi_model_analysis import MultiModelAnalysis
-from digest.qt_utils import apply_dark_style_sheet, prompt_user_ram_limit
+from digest.qt_utils import apply_dark_style_sheet
+from digest.folder_scan import FolderScanThread
 from digest.model_class.digest_onnx_model import DigestOnnxModel
-from digest.model_class.digest_report_model import DigestReportModel, compare_yaml_files
+from digest.model_class.digest_report_model import DigestReportModel
 from utils import onnx_utils
 
 
@@ -121,6 +118,8 @@ class MultiModelSelectionPage(QWidget):
         self.analysis_window = QMainWindow()
 
         self.current_dir: str = ""
+        self.scan_thread = None
+        self.scan_progress = None
 
     def open_progress(self, message: str, num_steps: int):
         self.progress = ProgressDialog(message, num_steps, self)
@@ -201,156 +200,87 @@ class MultiModelSelectionPage(QWidget):
                 item.setCheckState(Qt.CheckState.Unchecked)
 
     def set_directory(self, directory: str):
-        """
-        Recursively searches a directory for onnx models and yaml report files.
-        """
-
-        if not os.path.exists(directory):
+        if not os.path.isdir(directory):
             raise FileNotFoundError(f"Directory {directory} does not exist.")
-
-        if directory != self.current_dir:
-            self.current_dir = directory
-        else:
+        if self.scan_thread is not None and self.scan_thread.isRunning():
             return
-
-        onnx_file_list = list(
-            glob.glob(os.path.join(directory, "**/*.onnx"), recursive=True)
-        )
-        onnx_file_list = [os.path.normpath(model_file) for model_file in onnx_file_list]
-
-        # TODO Move to another thread and see if we can capture tqdm
-        yaml_file_list = list(
-            glob.glob(os.path.join(directory, "**/*.yaml"), recursive=True)
-        )
-        yaml_file_list = [os.path.normpath(model_file) for model_file in yaml_file_list]
-
-        # Filter out YAML files that are not valid reports
-        report_file_list = []
-        for yaml_file in yaml_file_list:
-            digest_report = DigestReportModel(yaml_file)
-            if digest_report.is_valid:
-                report_file_list.append(yaml_file)
-
-        total_num_models = len(onnx_file_list) + len(report_file_list)
-
-        if total_num_models == 0:
-            self.update_message_label("No models found in the selected directory.")
-            return
-
-        serialized_models_paths: defaultdict[bytes, List[str]] = defaultdict(list)
-
-        progress = ProgressDialog("Loading models", total_num_models, self)
-
-        memory_limit_percentage = 90
-        models_loaded = 0
-        for filepath in onnx_file_list + report_file_list:
-            progress.step()
-            if progress.wasCanceled():
-                break
-            try:
-                models_loaded += 1
-                extension = os.path.splitext(filepath)[-1]
-                if extension == ".onnx":
-                    model = onnx.load(filepath, load_external_data=False)
-                    serialized_models_paths[model.SerializeToString()].append(filepath)
-                elif extension == ".yaml":
-                    pass
-                dialog_msg = (
-                    "Warning: System RAM has exceeded the threshold of "
-                    f"{memory_limit_percentage}%. No further models will be loaded. "
-                )
-                if prompt_user_ram_limit(
-                    sys_ram_percent_limit=memory_limit_percentage,
-                    message=dialog_msg,
-                    parent=self,
-                ):
-                    self.update_warning_label(
-                        f"Loaded only {models_loaded - 1} out of {total_num_models} models "
-                        f"as memory consumption has reached {memory_limit_percentage}% of "
-                        "system memory. Preventing further loading of models."
-                    )
-                    print(
-                        "Preventing further model loads as mem consumption exceeded "
-                        f"{memory_limit_percentage}%"
-                    )
-                    break
-                else:
-                    self.ui.warningLabel.hide()
-
-            except DecodeError as error:
-                print(f"Error decoding model {filepath}: {error}")
-
-        progress = ProgressDialog(
-            "Processing Models",
-            len(serialized_models_paths) + len(report_file_list),
-            self,
-        )
-
-        num_duplicates = 0
+        self.current_dir = directory
+        self.ui.selectFolderBtn.setEnabled(False)
+        self.ui.openAnalysisBtn.setEnabled(False)
+        self.ui.warningLabel.hide()
         self.item_model.clear()
+        self.model_dict.clear()
         self.ui.duplicateListWidget.clear()
-        for paths in serialized_models_paths.values():
-            if progress.wasCanceled():
-                break
-            progress.step()
-            if len(paths) > 1:
-                num_duplicates += 1
-                self.ui.duplicateListWidget.addItem(paths[0])
-                for dupe in paths[1:]:
-                    self.ui.duplicateListWidget.addItem(f"- Duplicate: {dupe}")
-            item = QStandardItem(paths[0])
-            item.setCheckable(True)
-            item.setCheckState(Qt.CheckState.Checked)
-            self.item_model.appendRow(item)
-
-        # Use a standard nested loop to detect duplicate reports
-        duplicate_reports: Dict[str, List[str]] = {}
-        processed_files = set()
-        for i in range(len(report_file_list)):
-            if progress.wasCanceled():
-                break
-            progress.step()
-            path1 = report_file_list[i]
-            if path1 in processed_files:
-                continue  # Skip already processed files
-
-            # We will use path1 as the unique model and save a list of duplicates
-            duplicate_reports[path1] = []
-            for j in range(i + 1, len(report_file_list)):
-                path2 = report_file_list[j]
-                if compare_yaml_files(
-                    path1, path2, ["report_date", "model_files", "digest_version"]
-                ):
-                    num_duplicates += 1
-                    duplicate_reports[path1].append(path2)
-                    processed_files.add(path2)
-
-        progress.close()
-
-        for path, dupes in duplicate_reports.items():
-            if dupes:
-                self.ui.duplicateListWidget.addItem(path)
-                for dupe in dupes:
-                    self.ui.duplicateListWidget.addItem(f"- Duplicate: {dupe}")
-            item = QStandardItem(path)
-            item.setCheckable(True)
-            item.setCheckState(Qt.CheckState.Checked)
-            self.item_model.appendRow(item)
-
-        if num_duplicates:
-            label_text = f"Ignoring {num_duplicates} duplicate model(s)."
-            self.ui.duplicateLabel.setText(label_text)
-            self.ui.duplicateLabel.show()
-        else:
-            self.ui.duplicateLabel.hide()
-
+        self.ui.duplicateLabel.hide()
         self.update_num_selected_label()
+        self.scan_progress = ProgressDialog("Scanning folder...", parent=self)
+        self.scan_progress.setRange(0, 0)
+        self.scan_thread = FolderScanThread(directory, self)
+        self.scan_progress.canceled.connect(self.scan_thread.requestInterruption)
+        self.scan_thread.progress.connect(self.scan_progress.setLabelText)
+        self.scan_thread.completed.connect(self.show_scan_results)
+        self.scan_thread.failed.connect(self.scan_failed)
+        self.scan_thread.canceled.connect(self.scan_canceled)
+        self.scan_thread.finished.connect(self.finish_scan)
+        self.scan_thread.start()
 
+    def show_scan_results(self, result):
+        num_duplicates = 0
+        self.item_model.blockSignals(True)
+        try:
+            for paths in result["groups"]:
+                if len(paths) > 1:
+                    num_duplicates += len(paths) - 1
+                    self.ui.duplicateListWidget.addItem(paths[0])
+                    for duplicate in paths[1:]:
+                        self.ui.duplicateListWidget.addItem(f"- Duplicate: {duplicate}")
+                item = QStandardItem(paths[0])
+                item.setCheckable(True)
+                item.setCheckState(Qt.CheckState.Checked)
+                self.item_model.appendRow(item)
+            self.update_list_view_items()
+        finally:
+            self.item_model.blockSignals(False)
+        self.update_num_selected_label()
+        if num_duplicates:
+            self.ui.duplicateLabel.setText(f"Ignoring {num_duplicates} duplicate model(s).")
+            self.ui.duplicateLabel.show()
+        warnings = []
+        if result["limited"]:
+            warnings.append("Scan stopped because system memory usage reached 90%.")
+        if result["errors"]:
+            warnings.append(f"Skipped {result['errors']} unreadable file(s) or folder(s). See the diagnostic log.")
+        if warnings:
+            self.update_warning_label(" ".join(warnings))
         self.update_message_label(
-            f"Found a total of {total_num_models} model files. "
-            "Right click a model below "
-            "to open it up in the model summary view."
+            f"Found {len(result['groups'])} unique models in {result['total']} candidate files. "
+            "Right click a model to open its summary."
         )
+
+    def scan_failed(self, message):
+        self.update_warning_label(f"Could not scan this folder: {message}")
+
+    def scan_canceled(self):
+        self.update_message_label("Folder scan canceled. Select a folder to try again.")
+
+    def finish_scan(self):
+        if self.scan_progress:
+            self.scan_progress.close()
+            self.scan_progress.deleteLater()
+            self.scan_progress = None
+        self.ui.selectFolderBtn.setEnabled(True)
+        self.update_num_selected_label()
+        if self.scan_thread:
+            self.scan_thread.deleteLater()
+            self.scan_thread = None
+
+    def stop_workers(self):
+        if self.scan_thread:
+            self.scan_thread.requestInterruption()
+            self.scan_thread.wait()
+        if self.analysis_thread:
+            self.analysis_thread.stop_processing()
+            self.analysis_thread.wait()
 
     def start_analysis(self):
 

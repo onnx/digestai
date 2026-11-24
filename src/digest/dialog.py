@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 
 from PySide6.QtGui import QIcon
 from PySide6.QtCore import Qt
+from digest.logging_utils import log_path
 
 
 class ProgressDialog(QProgressDialog):
@@ -72,6 +73,10 @@ class InfoDialog(QDialog):
         major, minor, micro, _, _ = sys.version_info
         python_version_str = f"{major}.{minor}.{micro}"
         layout.addWidget(QLabel(f"Python: {python_version_str}"))
+        log_label = QLabel(f"Diagnostic log: {log_path()}")
+        log_label.setWordWrap(True)
+        log_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        layout.addWidget(log_label)
 
         self.setLayout(layout)
 
