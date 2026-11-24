@@ -22,6 +22,7 @@ def main():
         environment = work / "venv"
         venv.EnvBuilder(with_pip=True).create(environment)
         python = environment / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+        digest = environment / ("Scripts/digest.exe" if os.name == "nt" else "bin/digest")
         env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
         env.pop("PYTHONPATH", None)
         env.pop("PYTHONHOME", None)
@@ -31,7 +32,7 @@ def main():
         )
         subprocess.run([str(python), "-m", "pip", "check"], cwd=work, env=env, check=True)
         subprocess.run(
-            [str(python), "-m", "digest.main", "--smoke-test"],
+            [str(digest), "--smoke-test"],
             cwd=work, env=env, check=True, timeout=60,
         )
         shutil.copytree(root / "test", work / "test", ignore=shutil.ignore_patterns("__pycache__"))
