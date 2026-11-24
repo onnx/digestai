@@ -6,7 +6,6 @@ import copy
 from typing import Dict, List, Optional
 from platformdirs import user_cache_dir
 
-# pylint: disable=no-name-in-module
 from PySide6.QtWidgets import (
     QWidget,
     QTableWidgetItem,
