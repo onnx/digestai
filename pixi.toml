@@ -1,0 +1,55 @@
+[workspace]
+name = "digestai"
+description = "Model analysis toolkit"
+channels = ["conda-forge"]
+# Current onnxruntime wheels for Apple silicon target macOS 14 or newer.
+platforms = ["win-64", "linux-64", { name = "osx-arm64-macos14", platform = "osx-arm64", macos = "14.0" }]
+requires-pixi = ">=0.81"
+
+# Python comes from conda-forge; DigestAI and its runtime dependencies come from
+# PyPI, exactly as `pip install -e .` would install them.
+[dependencies]
+python = ">=3.11,<3.14"
+
+[pypi-dependencies]
+digestai = { path = ".", editable = true }
+
+[tasks]
+digest = { cmd = "digest", description = "Start the Digest GUI" }
+designer = { cmd = "pyside6-designer", description = "Open Qt Designer to edit the .ui files" }
+compile-ui = { cmd = "python src/digest/compile_digest_gui.py", description = "Regenerate the Python UI and resource files" }
+
+[feature.test.pypi-dependencies]
+pytest = ">=8"
+
+[feature.test.tasks]
+test = { cmd = "pytest test/test_reports.py test/test_huggingface.py", description = "Run the tests that CI runs" }
+test-gui = { cmd = "pytest test/test_gui.py", description = "Run the GUI test (needs a display; not run in CI)" }
+
+[feature.lint.dependencies]
+ruff = ">=0.17"
+
+[feature.lint.tasks]
+lint = { cmd = "ruff check .", description = "Lint with ruff" }
+
+[feature.build.pypi-dependencies]
+pyinstaller = ">=6"
+
+[feature.build.tasks]
+build-exe = { cmd = "pyinstaller main.spec", description = "Build dist/digest executable" }
+
+[feature.py311.dependencies]
+python = "3.11.*"
+
+[feature.py312.dependencies]
+python = "3.12.*"
+
+[feature.py313.dependencies]
+python = "3.13.*"
+
+[environments]
+default = { features = ["py312", "test", "lint", "build"], solve-group = "py312" }
+py311 = { features = ["py311", "test"] }
+py312 = { features = ["py312", "test"], solve-group = "py312" }
+py313 = { features = ["py313", "test"] }
+lint = { features = ["lint"], no-default-feature = true }
