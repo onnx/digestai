@@ -202,7 +202,7 @@ class MultiModelSelectionPage(QWidget):
     def set_directory(self, directory: str):
         if not os.path.isdir(directory):
             raise FileNotFoundError(f"Directory {directory} does not exist.")
-        if self.scan_thread is not None and self.scan_thread.isRunning():
+        if self.scan_thread is not None:
             return
         self.current_dir = directory
         self.ui.selectFolderBtn.setEnabled(False)

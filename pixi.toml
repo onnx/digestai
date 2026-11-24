@@ -24,7 +24,7 @@ pytest = ">=8"
 
 [feature.test.tasks]
 test = { cmd = "pytest test/test_reports.py test/test_huggingface.py test/test_gui_reliability.py", env = { QT_QPA_PLATFORM = "offscreen" }, description = "Run report, hub, and GUI reliability regression tests" }
-test-gui = { cmd = "pytest test/test_gui.py", description = "Run the GUI test (needs a display; not run in CI)" }
+test-gui = { cmd = "pytest test/test_gui.py", description = "Run GUI tests (use QT_QPA_PLATFORM=offscreen without a display)" }
 
 [feature.lint.dependencies]
 ruff = ">=0.17"

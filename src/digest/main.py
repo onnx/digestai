@@ -34,7 +34,7 @@ from PySide6.QtWidgets import (
     QMenu,
 )
 from PySide6.QtGui import QDragEnterEvent, QDropEvent, QPixmap, QIcon, QFont
-from PySide6.QtCore import Qt, QSize, QThreadPool, Signal
+from PySide6.QtCore import Qt, QSize, QThreadPool, Signal, QTimer
 
 from digest.dialog import StatusDialog, InfoDialog, WarnDialog, ProgressDialog
 from digest.similarity_analysis import SimilarityWorker, post_process
@@ -748,6 +748,9 @@ def main():
         description="",
     )
     parser.add_argument(
+        "--smoke-test", action="store_true", help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "-i",
         "--input-file",
         type=str,
@@ -764,6 +767,8 @@ def main():
 
     window = DigestApp(args.input_file)
     window.showMaximized()
+    if args.smoke_test:
+        QTimer.singleShot(250, window.close)
     sys.exit(app.exec())
 
 

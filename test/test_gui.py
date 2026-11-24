@@ -3,13 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import gc
 import sys
 import tempfile
 import unittest
 from unittest.mock import patch, MagicMock
+import pandas as pd
 
 from PySide6.QtTest import QTest
-from PySide6.QtCore import Qt, QEventLoop, QTimer, Signal
+from PySide6.QtCore import Qt, QEvent, QEventLoop, QTimer, Signal
 from PySide6.QtWidgets import QApplication
 
 from huggingface_hub.hf_api import ModelInfo
@@ -31,7 +33,7 @@ class DigestGuiTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = QApplication(sys.argv)
-        cls.app.setQuitOnLastWindowClosed(True)  # Ensure proper cleanup
+        cls.app.setQuitOnLastWindowClosed(False)
         return super().setUpClass()
 
     @classmethod
@@ -44,7 +46,25 @@ class DigestGuiTest(unittest.TestCase):
         return super().tearDownClass()
 
     def setUp(self):
+        # Keep GUI tests independent of the user's cache and the large similarity
+        # database. Model loading, plotting, and report export still run normally.
+        cache = tempfile.TemporaryDirectory()
+        self.addCleanup(cache.cleanup)
+        cache_patch = patch("digest.freeze_inputs.user_cache_dir", return_value=cache.name)
+        cache_patch.start()
+        self.addCleanup(cache_patch.stop)
+        similarity_patch = patch(
+            "digest.similarity_analysis.find_match",
+            return_value=(
+                ["resnet18", "reference1", "reference2", "reference3"],
+                {},
+                pd.DataFrame({"Conv": [1.0, 0.8, 0.5, 0.2]}),
+            ),
+        )
+        similarity_patch.start()
+        self.addCleanup(similarity_patch.stop)
         self.digest_app = digest.main.DigestApp()
+        self.digest_app.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         if self.digest_app is None:
             self.fail("Failed to initialize DigestApp")
         self.digest_app.show()
@@ -55,20 +75,25 @@ class DigestGuiTest(unittest.TestCase):
     def _cleanup(self):
         """Ensure proper cleanup of Qt resources"""
         if self.digest_app:
-            # Close all windows first
-            for window in QApplication.topLevelWindows():
-                window.close()
-                QApplication.processEvents()
-
-            # Wait for any pending threads with a shorter timeout
+            # Finish workers before destroying the widgets that receive signals.
             if hasattr(self.digest_app, "thread_pool"):
                 self.digest_app.thread_pool.clear()  # Cancel any pending tasks
-                self.digest_app.thread_pool.waitForDone(2000)  # 2 second timeout
+                self.digest_app.thread_pool.waitForDone()
+            hf_page = self.digest_app.ui.stackedWidget.widget(self.digest_app.Page.HUGGINGFACE)
+            for name in ("search_thread", "download_thread"):
+                worker = getattr(hf_page, name, None)
+                if worker is not None:
+                    worker.wait()
 
             QApplication.processEvents()
-            self.digest_app.close()
+            for widget in QApplication.topLevelWidgets():
+                widget.close()
+            QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
             self.digest_app = None
             QApplication.processEvents()
+            # Collect Python/Qt cycles on the GUI thread, before the next model
+            # worker allocates enough objects to trigger collection itself.
+            gc.collect()
 
     def _wait_for_signal(self, signal: Signal, timeout_ms=THREAD_TIMEOUT):
         """Wait for a signal to be emitted, with a timeout."""
@@ -80,15 +105,22 @@ class DigestGuiTest(unittest.TestCase):
             loop.quit()
 
         signal.connect(on_signal_emitted)
-        QTimer.singleShot(timeout_ms, loop.quit)
+        timer = QTimer()
+        timer.setSingleShot(True)
+        timer.timeout.connect(loop.quit)
+        timer.start(timeout_ms)
         loop.exec()
+        timer.stop()
+        signal.disconnect(on_signal_emitted)
 
         return bool(signal_emitted)
 
     def _mock_file_open(self, mock_dialog, filepath):
         """Helper to mock file open dialog and wait for load completion."""
         mock_dialog.return_value = (filepath, "")
-        QTest.mouseClick(self.digest_app.ui.openFileBtn, Qt.MouseButton.LeftButton)
+        QTimer.singleShot(
+            0, lambda: QTest.mouseClick(self.digest_app.ui.openFileBtn, Qt.MouseButton.LeftButton)
+        )
 
     def _verify_tab_added(self):
         """Verify that exactly one new tab was added"""
@@ -165,6 +197,10 @@ class DigestGuiTest(unittest.TestCase):
                 )
                 QTest.mouseClick(self.digest_app.ui.saveBtn, Qt.MouseButton.LeftButton)
                 QApplication.processEvents()
+                for suffix in ("report.yaml", "report.txt", "nodes.csv", "heatmap.png", "histogram.png"):
+                    report_path = os.path.join(tmpdirname, f"{self.MODEL_BASENAME}_{suffix}")
+                    self.assertTrue(os.path.isfile(report_path), report_path)
+                    self.assertGreater(os.path.getsize(report_path), 0)
 
     def test_save_tables(self):
         """Test saving node tables."""

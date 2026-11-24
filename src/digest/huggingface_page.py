@@ -15,9 +15,9 @@ from PySide6.QtCore import (
     QObject,
     QThread,
     Qt,
+    Slot,
 )
 from huggingface_hub import hf_api, hf_hub_download
-from huggingface_hub.hf_api import ModelInfo
 from huggingface_hub.utils import HfHubHTTPError
 from digest.ui.huggingface_page_ui import Ui_huggingfacePage
 from digest.dialog import ProgressDialog
@@ -110,7 +110,7 @@ class HFDownloadThread(QThread):
 
 class HuggingfacePage(QWidget):
 
-    model_signal = Signal(ModelInfo)
+    model_signal = Signal(str)
 
     def __init__(
         self,
@@ -191,6 +191,7 @@ class HuggingfacePage(QWidget):
         # Start the search thread
         self.search_thread.start()
 
+    @Slot(str)
     def on_search_started(self, search_text):
         # Create indeterminate progress dialog for search
         self.search_progress_dialog = ProgressDialog(
@@ -209,6 +210,7 @@ class HuggingfacePage(QWidget):
         # Update message
         self.update_message_label(info_message="Searching huggingface...")
 
+    @Slot(dict, str)
     def on_search_completed(self, column_data, search_text):
         # Close the progress dialog
         if self.search_progress_dialog:
@@ -232,7 +234,7 @@ class HuggingfacePage(QWidget):
 
     def update_model_list_view(self, column_data, search_text):
         """Update the UI with the processed model data"""
-        model = QStandardItemModel()
+        model = QStandardItemModel(self.ui.hf_column_view)
 
         parent_item = model.invisibleRootItem()
         for model_name, model_details in column_data.items():
@@ -242,7 +244,10 @@ class HuggingfacePage(QWidget):
                 child_item = QStandardItem(onnx_file)
                 item.appendRow(child_item)
 
+        previous_model = self.ui.hf_column_view.model()
         self.ui.hf_column_view.setModel(model)
+        if previous_model is not None:
+            previous_model.deleteLater()
         self.ui.hf_column_view.selectionModel().selectionChanged.connect(
             self.on_column_view_selection_change
         )
@@ -275,31 +280,30 @@ class HuggingfacePage(QWidget):
         self.download_progress_dialog.setMaximum(0)
 
         # Connect signals
-        self.download_thread.signals.started.connect(
-            lambda filename: self.download_progress_dialog.show()
-        )
-
-        self.download_thread.signals.finished.connect(
-            lambda path: (
-                (
-                    self.currently_selected_hf_onnx.update({"cache": path})
-                    if path
-                    else None
-                ),
-                self.download_progress_dialog.close(),
-                self.model_signal.emit(path) if path else None,
-                self.update_message_label(
-                    info_message=(
-                        f"Downloaded model to {path}" if path else "Download failed"
-                    )
-                ),
-            )
-        )
+        self.download_thread.signals.started.connect(self.on_download_started)
+        self.download_thread.signals.finished.connect(self.on_download_finished)
 
         # Handle cancel button in progress dialog
         self.download_progress_dialog.canceled.connect(self.cancel_download)
 
         self.download_thread.start()
+
+    @Slot(str)
+    def on_download_started(self, _filename):
+        self.download_progress_dialog.show()
+
+    @Slot(str)
+    def on_download_finished(self, path):
+        # Bound QObject slots route worker signals to the GUI thread. Lambdas
+        # without a receiver context can otherwise manipulate widgets on a worker.
+        if path:
+            self.currently_selected_hf_onnx["cache"] = path
+        self.download_progress_dialog.close()
+        self.update_message_label(
+            info_message=f"Downloaded model to {path}" if path else "Download failed"
+        )
+        if path:
+            self.model_signal.emit(path)
 
     def cancel_download(self):
         if self.download_thread and self.download_thread.isRunning():

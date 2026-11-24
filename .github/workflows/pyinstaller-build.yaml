@@ -29,3 +29,9 @@ jobs:
       - name: Verify executable creation
         run: Get-Item dist/digest.exe
         shell: pwsh
+      - name: Smoke test executable
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: >-
+          pixi run python -c "import subprocess;
+          subprocess.run(['dist/digest.exe', '--smoke-test'], check=True, timeout=60)"
