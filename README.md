@@ -63,30 +63,24 @@ For more insights on Digest AI, see our announcement blog [here](https://www.amd
 
 ## Installation Instructions for Developers
 
-1. Create a Conda Environment (recommended):
-
-    ```bash
-    conda create -n digestai python=3.11
-    conda activate digestai
-    ```
+1. Install [pixi](https://pixi.sh/latest/#installation).
 
 1. Clone the repository:
 
     ```bash
     git clone https://github.com/onnx/digestai.git
+    cd digestai
     ```
 
-1. Install Digest AI:
+1. Start the GUI. On first run, pixi creates the environment from `pixi.lock` and installs Digest AI in editable mode:
 
     ```bash
-    pip install -e digestai
+    pixi run digest
     ```
 
-1. Start the GUI
+    Use `pixi shell` to open a terminal with the environment activated, or `pixi task list` to see all available tasks.
 
-    ```bash
-    digest
-    ```
+Alternatively, install Digest AI with pip into any Python 3.11–3.13 environment: `pip install -e .`
 
 # Digest AI User Guide
 
@@ -179,32 +173,25 @@ The following steps are recommended because they are reproducible, however, ther
 **Workflow**
 
 1. **Open Qt Designer:**
-   * **Activate Conda Environment:**  Ensure your `digest` Conda environment is activated.
-   * **Launch:** Run `pyside6-designer.exe` from your terminal.
+   * **Launch:** Run `pixi run designer` from the project's root directory.
 
 2. **Work with UI Files:**
    * Open any existing UI file (`.ui`) from `src/digest/ui`.
    * Design your interface using the drag-and-drop tools and property editor.
    * Resource Files (Optional): If your UI uses custom icons, images, or stylesheets, please leverage the Qt resource file (`.qrc`). This makes it easier to manage and package resources with the application.
-   * Please add any new `.ui` files to the `.pylintrc` file.
+   * The generated Python files in `src/digest/ui` are excluded from linting (see `[tool.ruff]` in `pyproject.toml`).
 
 3. **Recompile UI Files (After Making Changes):**
-   * From your terminal, navigate to the project's root directory.
-   * Run: `python src/digest/compile_digest_gui.py`
+   * From the project's root directory, run: `pixi run compile-ui`
 
 ## Building EXE for Windows Deployment
 
-  - Setup the environment by following the steps [Installation Instructions for Developers](#installation-instructions-for-developers) to create the `digestai` conda environment
-  - With the `digestai` conda environment activated install pyinstaller:
-  
-    ```bash
-    pip install pyinstaller
-    ```
+* Set up the environment by following the [Installation Instructions for Developers](#installation-instructions-for-developers). PyInstaller is included in the default pixi environment.
 
 * Run the following command to create the executable:
 
   ```bash
-  pyinstaller.exe main.spec
+  pixi run build-exe
   ```
 
 * `digest.exe` will be built to `dist/digest.exe`.
@@ -217,11 +204,17 @@ We welcome contributions! If you'd like to get involved, please:
 
 1. Fork or Branch and Create a Pull Request (PR): Fork the repository, make your changes, and submit a PR. Ensure your PR has a clear description of the changes and refers to any issues it addresses (if applicable).
 
+1. Lint and Test: CI lints with [ruff](https://docs.astral.sh/ruff/) and runs the report tests. Run the same checks locally from the digestai root directory with:
+
+```bash
+pixi run lint
+pixi run test
+```
+
 1. Run GUI Test Locally: Before submitting your PR, verify your changes pass the local GUI test. This test is currently not part of our CI workflow and must be run manually from the digestai root directory using:
 
 ```bash
-pip install pytest "pylint<4"
-pytest test/test_gui.py
+pixi run test-gui
 ```
 
 ## Contact

@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 from digest.subgraph_analysis.model_encode import (
     encode_model,
-)  # pylint: disable=import-error
+)
 
 
 def find_match(model_path, dequantize=False, replace=False):
