@@ -11,7 +11,7 @@ from unittest.mock import patch, MagicMock
 import pandas as pd
 
 from PySide6.QtTest import QTest
-from PySide6.QtCore import Qt, QEventLoop, QTimer, Signal
+from PySide6.QtCore import Qt, QEvent, QEventLoop, QTimer, Signal
 from PySide6.QtWidgets import QApplication
 
 from huggingface_hub.hf_api import ModelInfo
@@ -33,7 +33,7 @@ class DigestGuiTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = QApplication(sys.argv)
-        cls.app.setQuitOnLastWindowClosed(True)  # Ensure proper cleanup
+        cls.app.setQuitOnLastWindowClosed(False)
         return super().setUpClass()
 
     @classmethod
@@ -64,6 +64,7 @@ class DigestGuiTest(unittest.TestCase):
         similarity_patch.start()
         self.addCleanup(similarity_patch.stop)
         self.digest_app = digest.main.DigestApp()
+        self.digest_app.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         if self.digest_app is None:
             self.fail("Failed to initialize DigestApp")
         self.digest_app.show()
@@ -87,6 +88,7 @@ class DigestGuiTest(unittest.TestCase):
             QApplication.processEvents()
             for widget in QApplication.topLevelWidgets():
                 widget.close()
+            QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
             self.digest_app = None
             QApplication.processEvents()
             # Collect Python/Qt cycles on the GUI thread, before the next model
