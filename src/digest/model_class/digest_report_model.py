@@ -153,7 +153,7 @@ class DigestReportModel(DigestModel):
         if self.filepath and os.path.exists(self.filepath):
             shutil.copy(self.filepath, filepath)
 
-    def save_text_report(self, filepath: str) -> None:
+    def save_text_report(self, filepath: str) -> None:  # noqa: ARG002
         """Report models are not intended to be saved"""
         return
 

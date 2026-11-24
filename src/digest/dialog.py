@@ -5,7 +5,6 @@
 import sys
 import importlib.metadata
 
-# pylint: disable=no-name-in-module
 from PySide6.QtWidgets import (
     QPushButton,
     QDialog,

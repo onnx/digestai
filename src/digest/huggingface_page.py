@@ -5,7 +5,6 @@
 from typing import Dict, Optional
 import logging
 
-# pylint: disable=no-name-in-module
 from PySide6.QtWidgets import QWidget
 from PySide6.QtGui import (
     QStandardItem,
@@ -104,7 +103,7 @@ class HFDownloadThread(QThread):
 
             # Signal completion
             self.signals.finished.emit(path)
-        except Exception as e:  # pylint: disable=broad-exception-caught
+        except Exception as e:  # noqa: BLE001
             print(f"Error downloading file: {e}")
             self.signals.finished.emit("")  # Empty string indicates error
 
@@ -235,13 +234,13 @@ class HuggingfacePage(QWidget):
         """Update the UI with the processed model data"""
         model = QStandardItemModel()
 
-        parentItem = model.invisibleRootItem()
+        parent_item = model.invisibleRootItem()
         for model_name, model_details in column_data.items():
             item = QStandardItem(model_name)
-            parentItem.appendRow(item)
+            parent_item.appendRow(item)
             for onnx_file in model_details["onnx"]:
-                childItem = QStandardItem(onnx_file)
-                item.appendRow(childItem)
+                child_item = QStandardItem(onnx_file)
+                item.appendRow(child_item)
 
         self.ui.hf_column_view.setModel(model)
         self.ui.hf_column_view.selectionModel().selectionChanged.connect(

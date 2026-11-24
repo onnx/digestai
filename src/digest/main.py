@@ -1,7 +1,7 @@
 # Copyright(C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 #
 # SPDX-License-Identifier: Apache-2.0
-# pylint: disable=wrong-import-position
+# ruff: noqa: E402
 
 import os
 import sys
@@ -18,7 +18,6 @@ import yaml
 ROOT_FOLDER = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, str(ROOT_FOLDER))
 
-# pylint: disable=no-name-in-module
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -106,12 +105,12 @@ class SimilarityAnalysisReport(QMainWindow):
         self.description_textedit.setMinimumHeight(600)
         self.description_textedit.setHtml(
             f"""
-            <p style="font-family: 'DejaVu Sans'; font-size: 12pt; color: white; 
-            text-align: justify;"><br>This analysis works by extracting ops and subgraphs from the 
-            target model and comparing it with all models in a database. Our database contains over 
+            <p style="font-family: 'DejaVu Sans'; font-size: 12pt; color: white;
+            text-align: justify;"><br>This analysis works by extracting ops and subgraphs from the
+            target model and comparing it with all models in a database. Our database contains over
             1,900 LLMs, transformers, and computer vision (TIMM) models. <br><br>
             Operators and subgraphs shown in Yellow <span style="color: yellow; font-size: 20px">
-            &#9632;</span> represent elements that strongly correlate with the target model, while 
+            &#9632;</span> represent elements that strongly correlate with the target model, while
             operators and subgraphs shown in Purple <span style="color: purple; font-size: 20px;">
             &#9632;</span> represent elements that are weakly correlated.<br>
             <h2>The most similar models found were:</h2>
@@ -445,7 +444,7 @@ class DigestApp(QMainWindow):
         except ModelLoadError as e:
             self.status_dialog = StatusDialog(str(e), parent=self)
             self.status_dialog.show()
-        except Exception as e:  # pylint: disable=broad-except
+        except Exception as e:  # noqa: BLE001
             self.status_dialog = StatusDialog(
                 f"Unexpected error loading model: {str(e)}", parent=self
             )
@@ -577,7 +576,7 @@ class DigestApp(QMainWindow):
 
         try:
             self._save_report_files(current_tab, save_directory)
-        except Exception as exception:  # pylint: disable=broad-except
+        except Exception as exception:  # noqa: BLE001
             self._handle_save_error(exception)
         else:
             self._show_save_success(save_directory)

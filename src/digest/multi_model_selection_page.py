@@ -9,7 +9,6 @@ from collections import defaultdict
 from google.protobuf.message import DecodeError
 import onnx
 
-# pylint: disable=no-name-in-module
 from PySide6.QtWidgets import (
     QWidget,
     QMainWindow,

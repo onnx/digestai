@@ -4,7 +4,6 @@
 
 import os
 
-# pylint: disable=no-name-in-module
 from PySide6.QtWidgets import QWidget, QTableWidgetItem, QFileDialog
 from digest.ui.nodessummary_ui import Ui_nodesSummary
 from digest.qt_utils import apply_dark_style_sheet

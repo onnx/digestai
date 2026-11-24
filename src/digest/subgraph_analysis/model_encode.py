@@ -56,7 +56,7 @@ def get_onnx_ops_list(onnx_model) -> Dict:
     List unique ops found in the onnx model
     """
     onnx_ops_counter = {}
-    for node in onnx_model.graph.node:  # pylint: disable=E1101
+    for node in onnx_model.graph.node:
         onnx_ops_counter[node.op_type] = onnx_ops_counter.get(node.op_type, 0) + 1
     return onnx_ops_counter
 

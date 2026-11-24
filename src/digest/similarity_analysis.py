@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-# pylint: disable=no-name-in-module
 import os
 from typing import List, Optional
 from PySide6.QtCore import Signal, QRunnable, QObject
@@ -50,7 +49,7 @@ class SimilarityWorker(QRunnable):
             self.signals.completed.emit(
                 True, self.model_id, most_similar, self.png_filepath, df_sorted
             )
-        except Exception as e:  # pylint: disable=broad-exception-caught
+        except Exception as e:  # noqa: BLE001
             most_similar = ""
             self.signals.completed.emit(
                 False, self.model_id, most_similar, self.png_filepath, df_sorted

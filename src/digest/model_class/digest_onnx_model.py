@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-# pylint: disable=no-name-in-module
 import os
 from typing import List, Dict, Optional, Tuple, cast
 from PySide6.QtCore import QRunnable, Signal, Slot, QObject
@@ -201,7 +200,7 @@ class DigestOnnxModel(DigestModel):
             onnx_model = onnx.shape_inference.infer_shapes(
                 onnx_model, strict_mode=True, data_prop=True
             )
-        except Exception as e:  # pylint: disable=broad-except
+        except Exception as e:  # noqa: BLE001
             print(f"ONNX utils: {str(e)}")
             self.flops = None
 
@@ -234,7 +233,7 @@ class DigestOnnxModel(DigestModel):
                 tensor.name: tensor for tensor in onnx_model.graph.initializer
             }
 
-        for node in onnx_model.graph.node:  # pylint: disable=E1101
+        for node in onnx_model.graph.node:
 
             node_info = NodeInfo()
 

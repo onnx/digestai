@@ -197,7 +197,7 @@ def optimize_onnx_model(
                 sess_options,
                 providers=["CPUExecutionProvider"],
             )
-        except Exception as e:  # pylint: disable=broad-except
+        except Exception as e:  # noqa: BLE001
             print(f"Error loading model into inference session: {e}")
             return model_proto, False
 

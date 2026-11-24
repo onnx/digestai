@@ -6,7 +6,6 @@ import sys
 import colorsys
 from typing import Any, List, Optional
 
-# pylint: disable=no-name-in-module
 from PySide6.QtCharts import QChart, QChartView, QPieSeries, QPieSlice
 from PySide6.QtGui import QPainter, QPen, QColor, QFont, QPixmap
 from PySide6.QtCore import Qt, QMargins

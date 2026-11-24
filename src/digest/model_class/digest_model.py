@@ -195,7 +195,7 @@ def save_nodes_csv_report(node_data: NodeData, filepath: str) -> None:
     except PermissionError as exception:
         raise PermissionError(
             f"Saving reports to {filepath} failed with error {exception}"
-        )
+        ) from exception
 
 
 def save_node_type_counts_csv_report(
