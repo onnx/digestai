@@ -2,7 +2,6 @@
 
 from collections import OrderedDict
 
-# pylint: disable=no-name-in-module
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -23,7 +22,6 @@ class PlotWidgetCustom(pg.PlotWidget):
             QApplication.sendEvent(self.parent(), event)  # Scroll otherwise
 
 
-# pylint: disable=abstract-method
 class InteractiveBarItem(pg.BarGraphItem):
     def __init__(
         self,
@@ -38,7 +36,7 @@ class InteractiveBarItem(pg.BarGraphItem):
         **kwargs,
     ):
         super().__init__(
-            x0=x0, y0=y0, width=width, height=height, brush=brush, *args, **kwargs
+            *args, x0=x0, y0=y0, width=width, height=height, brush=brush, **kwargs
         )
         self.setAcceptHoverEvents(True)
         self.default_color = brush.color()

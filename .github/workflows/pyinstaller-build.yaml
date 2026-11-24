@@ -7,34 +7,22 @@ on:
   pull_request:
     branches: ["main"]
 
+permissions:
+  contents: read
+
 jobs:
   build:
-    runs-on: windows-latest 
-    strategy:
-      matrix:
-        python-version: ["3.11", "3.13"]
-    defaults:
-      run:
-        shell: bash -el {0}
-
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Set up Miniconda with 64-bit Python
-        uses: conda-incubator/setup-miniconda@v4
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@9936258fee697aff89b3fed6ca1f80a382ef694e # v0.11.3
         with:
-          miniconda-version: "latest"
-          activate-environment: digestai
-          python-version: ${{ matrix.python-version }}
-      - name: Install Software Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .
-          pip install pylint pytest
-          pip install pyinstaller
-          python -m pip check
+          pixi-version: v0.81.0
+          environments: default
 
       - name: Run PyInstaller
-        run: pyinstaller main.spec
+        run: pixi run build-exe
 
       - name: Verify executable creation
         run: dir dist\\digest.exe
