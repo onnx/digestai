@@ -17,6 +17,13 @@ def log_path():
     return Path(user_log_dir("digest")) / "digest.log"
 
 
+class DiagnosticFileHandler(RotatingFileHandler):
+    def handleError(self, record):  # noqa: ARG002 -- logging's handler interface
+        # Avoid recursively logging to redirected stderr if the disk fills up.
+        if sys.__stderr__ is not None:
+            sys.__stderr__.write("Could not write to the Digest diagnostic log.\n")
+
+
 class LogStream:
     def __init__(self, original, level):
         self.original = original
@@ -61,7 +68,7 @@ def configure_logging():
     try:
         path = log_path()
         path.parent.mkdir(parents=True, exist_ok=True)
-        handler = RotatingFileHandler(path, maxBytes=2 * 1024 * 1024, backupCount=3, encoding="utf-8")
+        handler = DiagnosticFileHandler(path, maxBytes=2 * 1024 * 1024, backupCount=3, encoding="utf-8")
     except OSError as error:
         # A read-only profile should not prevent launching the GUI.
         if sys.stderr is not None:

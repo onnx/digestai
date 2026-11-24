@@ -204,6 +204,14 @@ The following steps are recommended because they are reproducible, however, ther
 
 * `digest.exe` will be built to `dist/digest.exe`.
 
+## Troubleshooting
+
+For GUI troubleshooting, open the information dialog to find the diagnostic log
+location. GUI launches record Python stdout/stderr and unhandled exceptions in
+`digest.log`, with up to three rotated backups of 2 MiB each. Native-library output
+written directly to operating-system file descriptors is not captured. Review logs
+before sharing them: they may include local model paths and error details.
+
 ## Contributing
 
 We welcome contributions! If you'd like to get involved, please:
@@ -226,12 +234,6 @@ pixi run test-gui
 ```
 
 ## Contact
-
-For GUI troubleshooting, open the information dialog to find the diagnostic log
-location. GUI launches record Python stdout/stderr and unhandled exceptions in
-`digest.log`, with up to three rotated backups of 2 MiB each. Native-library output
-written directly to operating-system file descriptors is not captured. Review logs
-before sharing them: they may include local model paths and error details.
 
 To get in touch, please reach out to us at [digestai@amd.com](mailto:digestai@amd.com).
 
