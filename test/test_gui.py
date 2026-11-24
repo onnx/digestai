@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import gc
 import sys
 import tempfile
 import unittest
@@ -73,20 +74,24 @@ class DigestGuiTest(unittest.TestCase):
     def _cleanup(self):
         """Ensure proper cleanup of Qt resources"""
         if self.digest_app:
-            # Close all windows first
-            for window in QApplication.topLevelWindows():
-                window.close()
-                QApplication.processEvents()
-
-            # Wait for any pending threads with a shorter timeout
+            # Finish workers before destroying the widgets that receive signals.
             if hasattr(self.digest_app, "thread_pool"):
                 self.digest_app.thread_pool.clear()  # Cancel any pending tasks
-                self.digest_app.thread_pool.waitForDone(2000)  # 2 second timeout
+                self.digest_app.thread_pool.waitForDone()
+            hf_page = self.digest_app.ui.stackedWidget.widget(self.digest_app.Page.HUGGINGFACE)
+            for name in ("search_thread", "download_thread"):
+                worker = getattr(hf_page, name, None)
+                if worker is not None:
+                    worker.wait()
 
             QApplication.processEvents()
-            self.digest_app.close()
+            for widget in QApplication.topLevelWidgets():
+                widget.close()
             self.digest_app = None
             QApplication.processEvents()
+            # Collect Python/Qt cycles on the GUI thread, before the next model
+            # worker allocates enough objects to trigger collection itself.
+            gc.collect()
 
     def _wait_for_signal(self, signal: Signal, timeout_ms=THREAD_TIMEOUT):
         """Wait for a signal to be emitted, with a timeout."""
