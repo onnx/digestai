@@ -57,7 +57,9 @@ For more insights on Digest AI, see our announcement blog [here](https://www.amd
 
 # Getting Started
 
-- **Get started quickly!** Download the DigestAI executable directly from [link coming soon].
+- **Windows downloads:** Check [GitHub Releases](https://github.com/onnx/digestai/releases)
+  for `digestai-windows-x64.zip`. Extract it and run `digest.exe`. Until a release
+  provides this asset, use the source installation below.
 
 - **Developers: Contribute to DigestAI** Follow the installation instruction below to get started.
 
@@ -81,6 +83,9 @@ For more insights on Digest AI, see our announcement blog [here](https://www.amd
     Use `pixi shell` to open a terminal with the environment activated, or `pixi task list` to see all available tasks.
 
 Alternatively, install Digest AI with pip into any Python 3.11–3.13 environment: `pip install -e .`
+
+PyPI publishing access is being established in [issue #30](https://github.com/onnx/digestai/issues/30).
+Use the source installation above until a PyPI release is announced.
 
 # Digest AI User Guide
 
@@ -124,20 +129,26 @@ Digest AI also includes support for multi-model analysis. By clicking the “Mul
 
 This will load a new view where the left pane will list unique models, while the right pane will indicate duplicates.
 
+Folder scanning runs in the background. Use Cancel to stop scanning; the current
+file may need to finish loading before cancellation completes. Unreadable files
+are skipped with a warning, and scanning stops if system memory usage reaches 90%.
+
 ### Hugging Face Module
 
 Digest AI also includes a Hugging Face module that enables users to download ONNX models directly from the Hugging Face hub without leaving Digest AI. You can search for a model, select it, and click Open. Digest AI will download the model, analyze it, and take you to the summary page.
 
-This feature is currently in Beta. To enable it:
-
-- Navigate to the file `src\digest\gui_config.yaml`
-- Change the `huggingface` module from `false` to `true`
+This feature is currently in Beta and enabled by default. Source installations can
+disable it by setting `modules.huggingface` to `false` in `src/digest/gui_config.yaml`.
 
 ### Handling Dynamic Input Shapes
 
 Some models may have dynamic input shapes, which can affect certain calculations like FLOPs. If you encounter this, Digest AI will display a warning message. To freeze a model with dynamic shapes, scroll down to the “Input Tensor” information section and click the blue snowflake icon next to the table.
 
 This will open a utility where you can specify static dimensions for the inputs, and you can then save the modified model with static shapes.
+
+Enter positive integers for dynamic dimensions. If shape validation or saving
+fails, the window shows the error and allows you to correct the inputs and retry.
+Canceling does not save or open a partially modified model.
 
 ## Digest API
 
@@ -196,6 +207,14 @@ The following steps are recommended because they are reproducible, however, ther
 
 * `digest.exe` will be built to `dist/digest.exe`.
 
+## Troubleshooting
+
+For GUI troubleshooting, open the information dialog to find the diagnostic log
+location. GUI launches record Python stdout/stderr and unhandled exceptions in
+`digest.log`, with up to three rotated backups of 2 MiB each. Native-library output
+written directly to operating-system file descriptors is not captured. Review logs
+before sharing them: they may include local model paths and error details.
+
 ## Contributing
 
 We welcome contributions! If you'd like to get involved, please:
@@ -222,6 +241,8 @@ installed-wheel check, run `python -m build` followed by
 `python tools/check_wheel.py dist` with a Python installation that supports `venv`.
 
 ## Contact
+
+Release maintainers: see [Releasing DigestAI](RELEASING.md) and the [changelog](CHANGELOG.md).
 
 To get in touch, please reach out to us at [digestai@amd.com](mailto:digestai@amd.com).
 
