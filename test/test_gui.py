@@ -7,6 +7,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch, MagicMock
+import pandas as pd
 
 from PySide6.QtTest import QTest
 from PySide6.QtCore import Qt, QEventLoop, QTimer, Signal
@@ -44,6 +45,23 @@ class DigestGuiTest(unittest.TestCase):
         return super().tearDownClass()
 
     def setUp(self):
+        # Keep GUI tests independent of the user's cache and the large similarity
+        # database. Model loading, plotting, and report export still run normally.
+        cache = tempfile.TemporaryDirectory()
+        self.addCleanup(cache.cleanup)
+        cache_patch = patch("digest.freeze_inputs.user_cache_dir", return_value=cache.name)
+        cache_patch.start()
+        self.addCleanup(cache_patch.stop)
+        similarity_patch = patch(
+            "digest.similarity_analysis.find_match",
+            return_value=(
+                ["resnet18", "reference1", "reference2", "reference3"],
+                {},
+                pd.DataFrame({"Conv": [1.0, 0.8, 0.5, 0.2]}),
+            ),
+        )
+        similarity_patch.start()
+        self.addCleanup(similarity_patch.stop)
         self.digest_app = digest.main.DigestApp()
         if self.digest_app is None:
             self.fail("Failed to initialize DigestApp")
@@ -80,15 +98,22 @@ class DigestGuiTest(unittest.TestCase):
             loop.quit()
 
         signal.connect(on_signal_emitted)
-        QTimer.singleShot(timeout_ms, loop.quit)
+        timer = QTimer()
+        timer.setSingleShot(True)
+        timer.timeout.connect(loop.quit)
+        timer.start(timeout_ms)
         loop.exec()
+        timer.stop()
+        signal.disconnect(on_signal_emitted)
 
         return bool(signal_emitted)
 
     def _mock_file_open(self, mock_dialog, filepath):
         """Helper to mock file open dialog and wait for load completion."""
         mock_dialog.return_value = (filepath, "")
-        QTest.mouseClick(self.digest_app.ui.openFileBtn, Qt.MouseButton.LeftButton)
+        QTimer.singleShot(
+            0, lambda: QTest.mouseClick(self.digest_app.ui.openFileBtn, Qt.MouseButton.LeftButton)
+        )
 
     def _verify_tab_added(self):
         """Verify that exactly one new tab was added"""
@@ -165,6 +190,10 @@ class DigestGuiTest(unittest.TestCase):
                 )
                 QTest.mouseClick(self.digest_app.ui.saveBtn, Qt.MouseButton.LeftButton)
                 QApplication.processEvents()
+                for suffix in ("report.yaml", "report.txt", "nodes.csv", "heatmap.png", "histogram.png"):
+                    report_path = os.path.join(tmpdirname, f"{self.MODEL_BASENAME}_{suffix}")
+                    self.assertTrue(os.path.isfile(report_path), report_path)
+                    self.assertGreater(os.path.getsize(report_path), 0)
 
     def test_save_tables(self):
         """Test saving node tables."""

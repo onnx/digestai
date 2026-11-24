@@ -211,11 +211,15 @@ pixi run lint
 pixi run test
 ```
 
-1. Run GUI Test Locally: Before submitting your PR, verify your changes pass the local GUI test. This test is currently not part of our CI workflow and must be run manually from the digestai root directory using:
+1. Run GUI Tests Locally: CI runs the GUI tests offscreen and tests a wheel installed in a clean environment. Run the GUI tests from the digestai root directory using:
 
 ```bash
 pixi run test-gui
 ```
+
+Set `QT_QPA_PLATFORM=offscreen` when running without a display. To reproduce the
+installed-wheel check, run `python -m build` followed by
+`python tools/check_wheel.py dist` with a Python installation that supports `venv`.
 
 ## Contact
 
