@@ -44,7 +44,7 @@ where = ["src"]
 include-package-data = true
 
 [tool.setuptools.package-data]
-digest = ["subgraph_analysis/database.zip"]
+digest = ["gui_config.yaml", "styles/*.qss", "subgraph_analysis/database.zip"]
 
 [tool.ruff]
 line-length = 120

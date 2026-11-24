@@ -23,6 +23,10 @@ a = Analysis(
                 os.path.normpath(os.path.join(proj_dir, 'src/digest/gui_config.yaml')), 
                 os.path.normpath(".")
             ),
+            (
+                os.path.normpath(os.path.join(proj_dir, 'src/digest/styles')),
+                os.path.normpath("digest/styles")
+            ),
         ],
     hiddenimports=['clickablelabel'],
     hookspath=[],
