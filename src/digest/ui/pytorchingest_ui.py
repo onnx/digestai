@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 ################################################################################
 ## Form generated from reading UI file 'pytorchingest.ui'
 ##
@@ -357,4 +356,3 @@ class Ui_pytorchIngest(object):
         self.exportWarningLabel.setText(QCoreApplication.translate("pytorchIngest", u"<html><head/><body><p>This is a warning message that we can use for now to prompt the user.</p></body></html>", None))
         self.exportOnnxBtn.setText(QCoreApplication.translate("pytorchIngest", u"Export ONNX", None))
     # retranslateUi
-

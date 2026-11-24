@@ -1,5 +1,5 @@
 Report created on December 06, 2024
-ONNX file: C:\Users\pcolange\Projects\digestai\test\resnet18.onnx
+ONNX file: test\resnet18.onnx
 Name of the model: resnet18
 Model version: 0
 Name of the graph: main_graph

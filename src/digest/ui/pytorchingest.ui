@@ -502,8 +502,8 @@
          <property name="styleSheet">
           <string notr="true">QLabel {
     font-size: 10px;
-    background-color: #FFCC00; 
-    border: 1px solid #996600; 
+    background-color: #FFCC00;
+    border: 1px solid #996600;
     color: #333333;
     font-weight: bold;
     border-radius: 0px;

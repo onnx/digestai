@@ -1,8 +1,10 @@
 import os
+import shutil
 from collections import OrderedDict
 import csv
 import ast
 import re
+from PySide6.QtCore import QRunnable, Signal, Slot, QObject
 from typing import Tuple, Optional, List, Dict, Any, Union
 import yaml
 from digest.model_class.digest_model import (
@@ -17,7 +19,7 @@ from digest.model_class.digest_model import (
 
 def parse_tensor_info(
     csv_tensor_cell_value,
-) -> Tuple[str, list, str, Optional[float]]:
+) -> Tuple[str, list, str, Union[str, float]]:
     """This is a helper function that expects the input to come from parsing
     the nodes csv and extracting either an input or output tensor."""
 
@@ -40,9 +42,7 @@ def parse_tensor_info(
     if not isinstance(shape, list):
         shape = list(shape)
 
-    if size == "None":
-        size = None
-    else:
+    if size != "None":
         size = float(size.split()[0])
 
     return name.strip(), shape, dtype.strip(), size
@@ -51,30 +51,30 @@ def parse_tensor_info(
 class DigestReportModel(DigestModel):
     def __init__(
         self,
-        report_file_path: str,
+        report_filepath: str,
     ) -> None:
 
         self.model_type = SupportedModelTypes.REPORT
 
-        self.is_valid = validate_yaml(report_file_path)
+        self.is_valid = validate_yaml(report_filepath)
 
         if not self.is_valid:
-            print(f"The yaml file {report_file_path} is not a valid digest report.")
+            print(f"The yaml file {report_filepath} is not a valid digest report.")
             return
 
         self.model_data = OrderedDict()
-        with open(report_file_path, "r", encoding="utf-8") as yaml_f:
+        with open(report_filepath, "r", encoding="utf-8") as yaml_f:
             self.model_data = yaml.safe_load(yaml_f)
 
         model_name = self.model_data["model_name"]
-        super().__init__(report_file_path, model_name, SupportedModelTypes.REPORT)
+        super().__init__(report_filepath, model_name, SupportedModelTypes.REPORT)
 
         self.similarity_heatmap_path: Optional[str] = None
         self.node_data = NodeData()
 
         # Given the path to the digest report, let's check if its a complete cache
         # and we can grab the nodes csv data and the similarity heatmap
-        cache_dir = os.path.dirname(os.path.abspath(report_file_path))
+        cache_dir = os.path.dirname(os.path.abspath(report_filepath))
         expected_heatmap_file = os.path.join(cache_dir, f"{model_name}_heatmap.png")
         if os.path.exists(expected_heatmap_file):
             self.similarity_heatmap_path = expected_heatmap_file
@@ -140,12 +140,42 @@ class DigestReportModel(DigestModel):
 
     def parse_model_nodes(self) -> None:
         """There are no model nodes to parse"""
+        return
 
-    def save_yaml_report(self, file_path: str) -> None:
-        """Report models are not intended to be saved"""
+    def save_yaml_report(self, filepath: str) -> None:
+        """self.filepath if exists is the path to the yaml file that was loaded
+        Despite saving a single model yaml report is not currently support, we can
+        offer this feature for multi model analysis."""
+        if self.filepath and os.path.exists(self.filepath):
+            shutil.copy(self.filepath, filepath)
 
-    def save_text_report(self, file_path: str) -> None:
+    def save_text_report(self, filepath: str) -> None:  # noqa: ARG002
         """Report models are not intended to be saved"""
+        return
+
+
+class WorkerSignals(QObject):
+    completed = Signal(DigestReportModel)
+
+
+class LoadDigestReportModelWorker(QRunnable):
+
+    def __init__(
+        self,
+        model_file_path: str,
+        model_name: str,
+    ):
+        super().__init__()
+        self.signals = WorkerSignals()
+        self.tab_name = model_name
+        self.model_file_path = model_file_path
+        self.unique_id: Optional[str] = None
+
+    @Slot()
+    def run(self):
+
+        digest_model = DigestReportModel(self.model_file_path)
+        self.signals.completed.emit(digest_model)
 
 
 def validate_yaml(report_file_path: str) -> bool:
@@ -233,10 +263,6 @@ def compare_yaml_files(
     differences = compare_dicts(yaml1, yaml2)
 
     if differences:
-        # print("Differences found:")
-        # for diff in differences:
-        #     print(f"- {diff}")
         return False
     else:
-        # print("No differences found.")
         return True

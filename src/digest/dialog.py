@@ -3,7 +3,6 @@
 import sys
 import importlib.metadata
 
-# pylint: disable=no-name-in-module
 from PySide6.QtWidgets import (
     QPushButton,
     QDialog,
@@ -21,7 +20,7 @@ from PySide6.QtCore import Qt
 class ProgressDialog(QProgressDialog):
     """A pop up window with a progress label that goes from 1 to 100"""
 
-    def __init__(self, label: str, num_steps: int, parent=None):
+    def __init__(self, label: str, num_steps: int = 0, parent=None):
         """
         label: the text to be shown in the pop up dialog
         num_steps: the total number of events the progress bar will load through
@@ -34,8 +33,6 @@ class ProgressDialog(QProgressDialog):
         self.setWindowIcon(QIcon(":/assets/images/digest_logo_500.jpg"))
         self.setValue(1)
 
-        self.user_canceled = False
-        self.canceled.connect(self.cancel)
         self.step_size = 1
         self.current_step = 0
         self.num_steps = num_steps
@@ -45,9 +42,6 @@ class ProgressDialog(QProgressDialog):
         if self.current_step > self.num_steps:
             self.current_step = self.num_steps
         self.setValue(self.current_step)
-
-    def cancel(self):
-        self.user_canceled = True
 
 
 class InfoDialog(QDialog):

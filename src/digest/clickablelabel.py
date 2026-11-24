@@ -1,4 +1,3 @@
-# pylint: disable=no-name-in-module
 # Copyright(C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
 from PySide6.QtWidgets import QLabel

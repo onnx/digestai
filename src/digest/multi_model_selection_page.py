@@ -7,7 +7,6 @@ from collections import defaultdict
 from google.protobuf.message import DecodeError
 import onnx
 
-# pylint: disable=no-name-in-module
 from PySide6.QtWidgets import (
     QWidget,
     QMainWindow,
@@ -47,7 +46,9 @@ class AnalysisThread(QThread):
 
         for file, model in self.model_dict.items():
             if self.user_canceled:
-                break
+                self.close_progress.emit()
+                self.completed.emit([])
+                return
             self.step_progress.emit()
             if model:
                 continue
@@ -56,7 +57,7 @@ class AnalysisThread(QThread):
                 model_proto = onnx_utils.load_onnx(file, False)
                 self.model_dict[file] = DigestOnnxModel(
                     model_proto,
-                    onnx_file_path=file,
+                    onnx_filepath=file,
                     model_name=model_name,
                     save_proto=False,
                 )
@@ -65,7 +66,7 @@ class AnalysisThread(QThread):
 
         self.close_progress.emit()
 
-        model_list = [model for model in self.model_dict.values()]
+        model_list = list(self.model_dict.values())
 
         self.completed.emit(model_list)
 
@@ -93,7 +94,14 @@ class MultiModelSelectionPage(QWidget):
         self.ui.radioONNX.toggled.connect(self.update_list_view_items)
         self.ui.radioReports.toggled.connect(self.update_list_view_items)
         self.ui.selectFolderBtn.clicked.connect(self.openFolder)
+
+        # We want to retain the size when the duplicate label
+        # is hidden to keep the two list columns even.
+        policy = self.ui.duplicateLabel.sizePolicy()
+        policy.setRetainSizeWhenHidden(True)
+        self.ui.duplicateLabel.setSizePolicy(policy)
         self.ui.duplicateLabel.hide()
+
         self.ui.modelListView.setModel(self.item_model)
         self.ui.modelListView.setContextMenuPolicy(
             Qt.ContextMenuPolicy.CustomContextMenu
@@ -203,13 +211,12 @@ class MultiModelSelectionPage(QWidget):
         else:
             return
 
-        progress = ProgressDialog("Searching directory for model files", 0, self)
-
         onnx_file_list = list(
             glob.glob(os.path.join(directory, "**/*.onnx"), recursive=True)
         )
         onnx_file_list = [os.path.normpath(model_file) for model_file in onnx_file_list]
 
+        # TODO Move to another thread and see if we can capture tqdm
         yaml_file_list = list(
             glob.glob(os.path.join(directory, "**/*.yaml"), recursive=True)
         )
@@ -224,16 +231,19 @@ class MultiModelSelectionPage(QWidget):
 
         total_num_models = len(onnx_file_list) + len(report_file_list)
 
+        if total_num_models == 0:
+            self.update_message_label("No models found in the selected directory.")
+            return
+
         serialized_models_paths: defaultdict[bytes, List[str]] = defaultdict(list)
 
-        progress.close()
         progress = ProgressDialog("Loading models", total_num_models, self)
 
         memory_limit_percentage = 90
         models_loaded = 0
         for filepath in onnx_file_list + report_file_list:
             progress.step()
-            if progress.user_canceled:
+            if progress.wasCanceled():
                 break
             try:
                 models_loaded += 1
@@ -268,17 +278,19 @@ class MultiModelSelectionPage(QWidget):
             except DecodeError as error:
                 print(f"Error decoding model {filepath}: {error}")
 
-        progress.close()
-
-        progress = ProgressDialog("Processing Models", total_num_models, self)
+        progress = ProgressDialog(
+            "Processing Models",
+            len(serialized_models_paths) + len(report_file_list),
+            self,
+        )
 
         num_duplicates = 0
         self.item_model.clear()
         self.ui.duplicateListWidget.clear()
         for paths in serialized_models_paths.values():
-            progress.step()
-            if progress.user_canceled:
+            if progress.wasCanceled():
                 break
+            progress.step()
             if len(paths) > 1:
                 num_duplicates += 1
                 self.ui.duplicateListWidget.addItem(paths[0])
@@ -293,9 +305,9 @@ class MultiModelSelectionPage(QWidget):
         duplicate_reports: Dict[str, List[str]] = {}
         processed_files = set()
         for i in range(len(report_file_list)):
-            progress.step()
-            if progress.user_canceled:
+            if progress.wasCanceled():
                 break
+            progress.step()
             path1 = report_file_list[i]
             if path1 in processed_files:
                 continue  # Skip already processed files
@@ -311,6 +323,8 @@ class MultiModelSelectionPage(QWidget):
                     duplicate_reports[path1].append(path2)
                     processed_files.add(path2)
 
+        progress.close()
+
         for path, dupes in duplicate_reports.items():
             if dupes:
                 self.ui.duplicateListWidget.addItem(path)
@@ -321,13 +335,8 @@ class MultiModelSelectionPage(QWidget):
             item.setCheckState(Qt.CheckState.Checked)
             self.item_model.appendRow(item)
 
-        progress.close()
-
         if num_duplicates:
-            label_text = (
-                f"The following {num_duplicates} models were found to be "
-                "duplicates and have been deselected from the list on the left."
-            )
+            label_text = f"Ignoring {num_duplicates} duplicate model(s)."
             self.ui.duplicateLabel.setText(label_text)
             self.ui.duplicateLabel.show()
         else:
@@ -358,6 +367,9 @@ class MultiModelSelectionPage(QWidget):
     def open_analysis(
         self, model_list: List[Union[DigestOnnxModel, DigestReportModel]]
     ):
+        if not model_list:
+            return
+
         multi_model_analysis = MultiModelAnalysis(model_list)
         self.analysis_window.setCentralWidget(multi_model_analysis)
         self.analysis_window.setWindowIcon(QIcon(":/assets/images/digest_logo_500.jpg"))

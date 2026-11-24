@@ -37,7 +37,7 @@ QGroupBox::title {
     color: lightgrey;
     subcontrol-origin: margin;
     left: 7px;
-    padding: 0px 5px 0px 5px;    
+    padding: 0px 5px 0px 5px;
 }
 
 QMenu {

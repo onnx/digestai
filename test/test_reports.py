@@ -56,7 +56,7 @@ class TestDigestReports(unittest.TestCase):
         opt_model, _ = onnx_utils.optimize_onnx_model(model_proto)
         digest_model = DigestOnnxModel(
             opt_model,
-            onnx_file_path=TEST_ONNX,
+            onnx_filepath=TEST_ONNX,
             model_name=model_name,
             save_proto=False,
         )
@@ -70,7 +70,15 @@ class TestDigestReports(unittest.TestCase):
                     compare_yaml_files(
                         TEST_SUMMARY_YAML_REPORT,
                         yaml_report_filepath,
-                        skip_keys=["report_date", "model_file", "digest_version"],
+                        # import_list is excluded because the opset domains that
+                        # onnxruntime's optimizer stamps into the optimized model
+                        # vary across onnxruntime versions.
+                        skip_keys=[
+                            "report_date",
+                            "model_file",
+                            "digest_version",
+                            "import_list",
+                        ],
                     )
                 )
 

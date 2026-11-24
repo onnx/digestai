@@ -2,6 +2,7 @@
 
 import os
 from typing import List, Dict, Optional, Tuple, cast
+from PySide6.QtCore import QRunnable, Signal, Slot, QObject
 from datetime import datetime
 import importlib.metadata
 from collections import OrderedDict
@@ -23,11 +24,13 @@ class DigestOnnxModel(DigestModel):
     def __init__(
         self,
         onnx_model: onnx.ModelProto,
-        onnx_file_path: str = "",
+        onnx_filepath: str = "",
         model_name: str = "",
         save_proto: bool = True,
     ) -> None:
-        super().__init__(onnx_file_path, model_name, SupportedModelTypes.ONNX)
+        super().__init__(onnx_filepath, model_name, SupportedModelTypes.ONNX)
+
+        self.model_type = SupportedModelTypes.ONNX
 
         # Public members exposed to the API
         self.model_proto: Optional[onnx.ModelProto] = onnx_model if save_proto else None
@@ -195,7 +198,7 @@ class DigestOnnxModel(DigestModel):
             onnx_model = onnx.shape_inference.infer_shapes(
                 onnx_model, strict_mode=True, data_prop=True
             )
-        except Exception as e:  # pylint: disable=broad-except
+        except Exception as e:  # noqa: BLE001
             print(f"ONNX utils: {str(e)}")
             self.flops = None
 
@@ -228,7 +231,7 @@ class DigestOnnxModel(DigestModel):
                 tensor.name: tensor for tensor in onnx_model.graph.initializer
             }
 
-        for node in onnx_model.graph.node:  # pylint: disable=E1101
+        for node in onnx_model.graph.node:
 
             node_info = NodeInfo()
 
@@ -508,9 +511,9 @@ class DigestOnnxModel(DigestModel):
                     self.node_type_flops.get(node.op_type, 0) + node_info.flops
                 )
 
-    def save_yaml_report(self, file_path: str) -> None:
+    def save_yaml_report(self, filepath: str) -> None:
 
-        parent_dir = os.path.dirname(os.path.abspath(file_path))
+        parent_dir = os.path.dirname(os.path.abspath(filepath))
         if not os.path.exists(parent_dir):
             raise FileNotFoundError(f"Directory {parent_dir} does not exist.")
 
@@ -524,7 +527,7 @@ class DigestOnnxModel(DigestModel):
             "report_date": report_date,
             "digest_version": digest_version,
             "model_type": self.model_type.value,
-            "model_file": self.file_path,
+            "model_file": self.filepath,
             "model_name": self.model_name,
             "model_version": self.model_version,
             "graph_name": self.graph_name,
@@ -543,12 +546,12 @@ class DigestOnnxModel(DigestModel):
             "output_tensors": output_tensors,
         }
 
-        with open(file_path, "w", encoding="utf-8") as f_p:
+        with open(filepath, "w", encoding="utf-8") as f_p:
             yaml.dump(yaml_data, f_p, sort_keys=False)
 
-    def save_text_report(self, file_path: str) -> None:
+    def save_text_report(self, filepath: str) -> None:
 
-        parent_dir = os.path.dirname(os.path.abspath(file_path))
+        parent_dir = os.path.dirname(os.path.abspath(filepath))
         if not os.path.exists(parent_dir):
             raise FileNotFoundError(f"Directory {parent_dir} does not exist.")
 
@@ -556,12 +559,12 @@ class DigestOnnxModel(DigestModel):
 
         digest_version = importlib.metadata.version("digestai")
 
-        with open(file_path, "w", encoding="utf-8") as f_p:
+        with open(filepath, "w", encoding="utf-8") as f_p:
             f_p.write(f"Report created on {report_date}\n")
             f_p.write(f"Digest version: {digest_version}\n")
             f_p.write(f"Model type: {self.model_type.name}\n")
-            if self.file_path:
-                f_p.write(f"ONNX file: {self.file_path}\n")
+            if self.filepath:
+                f_p.write(f"ONNX file: {self.filepath}\n")
             f_p.write(f"Name of the model: {self.model_name}\n")
             f_p.write(f"Model version: {self.model_version}\n")
             f_p.write(f"Name of the graph: {self.graph_name}\n")
@@ -652,3 +655,44 @@ class DigestOnnxModel(DigestModel):
             f_p.write("Output Tensor(s) Information:\n")
             f_p.write(output_table.get_string())
             f_p.write("\n\n")
+
+
+class WorkerSignals(QObject):
+    completed = Signal(DigestOnnxModel)
+
+
+class LoadDigestOnnxModelWorker(QRunnable):
+
+    def __init__(
+        self,
+        model_file_path: str,
+        model_name: str,
+    ):
+        super().__init__()
+        self.signals = WorkerSignals()
+        self.tab_name = model_name
+        self.model_file_path = model_file_path
+        self.unique_id: Optional[str] = None
+
+    @Slot()
+    def run(self):
+        try:
+            model_proto = onnx_utils.load_onnx(
+                self.model_file_path, load_external_data=False
+            )
+            opt_model, _ = onnx_utils.optimize_onnx_model(model_proto)
+        except FileNotFoundError as e:
+            print(f"File not found: {e.filename}")
+
+        digest_model = DigestOnnxModel(
+            opt_model,
+            model_name=self.tab_name,
+            onnx_filepath=self.model_file_path,
+        )
+
+        self.unique_id = digest_model.unique_id
+
+        if not self.tab_name:
+            self.tab_name = digest_model.model_name
+
+        self.signals.completed.emit(digest_model)

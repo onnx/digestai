@@ -1,14 +1,17 @@
 # Copyright(C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 
-# pylint: disable=no-name-in-module
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QDialog, QVBoxLayout
+from PySide6.QtWidgets import (
+    QApplication,
+    QDialog,
+    QMainWindow,
+    QVBoxLayout,
+    QWidget,
+)
 from PySide6.QtGui import QIcon
 
 
 class PopupWindow(QWidget):
-    """Opens new window that runs separate from the main digest window"""
-
     def __init__(self, widget: QWidget, window_title: str = "", parent=None):
         super().__init__(parent)
 
@@ -30,14 +33,13 @@ class PopupWindow(QWidget):
 
 
 class PopupDialog(QDialog):
-    """Opens a new window that takes focus and must be closed before returning
-    to the main digest window"""
+    """Open a modal child window and wait until its content closes it."""
 
     def __init__(self, widget: QWidget, window_title: str = "", parent=None):
         super().__init__(parent)
 
         if hasattr(widget, "close_signal"):
-            widget.close_signal.connect(self.on_widget_closed)  # type: ignore
+            widget.close_signal.connect(self.close)
 
         self.setWindowModality(Qt.WindowModality.WindowModal)
         self.setWindowFlags(Qt.WindowType.Window)
@@ -57,6 +59,3 @@ class PopupDialog(QDialog):
     def open(self):
         self.show()
         self.exec()
-
-    def on_widget_closed(self):
-        self.close()

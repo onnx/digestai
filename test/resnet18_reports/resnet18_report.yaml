@@ -1,5 +1,5 @@
 report_date: December 06, 2024
-model_file: C:\Users\pcolange\Projects\digestai\test\resnet18.onnx
+model_file: test\resnet18.onnx
 model_type: onnx
 model_name: resnet18
 model_version: 0
