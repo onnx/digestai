@@ -57,7 +57,9 @@ For more insights on Digest AI, see our announcement blog [here](https://www.amd
 
 # Getting Started
 
-- **Get started quickly!** Download the DigestAI executable directly from [link coming soon].
+- **Windows downloads:** Check [GitHub Releases](https://github.com/onnx/digestai/releases)
+  for `digestai-windows-x64.zip`. Extract it and run `digest.exe`. Until a release
+  provides this asset, use the source installation below.
 
 - **Developers: Contribute to DigestAI** Follow the installation instruction below to get started.
 
@@ -81,6 +83,9 @@ For more insights on Digest AI, see our announcement blog [here](https://www.amd
     Use `pixi shell` to open a terminal with the environment activated, or `pixi task list` to see all available tasks.
 
 Alternatively, install Digest AI with pip into any Python 3.11–3.13 environment: `pip install -e .`
+
+PyPI publishing access is being established in [issue #30](https://github.com/onnx/digestai/issues/30).
+Use the source installation above until a PyPI release is announced.
 
 # Digest AI User Guide
 
@@ -132,10 +137,8 @@ are skipped with a warning, and scanning stops if system memory usage reaches 90
 
 Digest AI also includes a Hugging Face module that enables users to download ONNX models directly from the Hugging Face hub without leaving Digest AI. You can search for a model, select it, and click Open. Digest AI will download the model, analyze it, and take you to the summary page.
 
-This feature is currently in Beta. To enable it:
-
-- Navigate to the file `src\digest\gui_config.yaml`
-- Change the `huggingface` module from `false` to `true`
+This feature is currently in Beta and enabled by default. Source installations can
+disable it by setting `modules.huggingface` to `false` in `src/digest/gui_config.yaml`.
 
 ### Handling Dynamic Input Shapes
 
@@ -238,6 +241,8 @@ installed-wheel check, run `python -m build` followed by
 `python tools/check_wheel.py dist` with a Python installation that supports `venv`.
 
 ## Contact
+
+Release maintainers: see [Releasing DigestAI](RELEASING.md) and the [changelog](CHANGELOG.md).
 
 To get in touch, please reach out to us at [digestai@amd.com](mailto:digestai@amd.com).
 
