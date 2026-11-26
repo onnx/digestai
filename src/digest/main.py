@@ -38,8 +38,9 @@ from PySide6.QtCore import Qt, QSize, QThreadPool, Signal, QTimer
 
 from digest.dialog import StatusDialog, InfoDialog, WarnDialog, ProgressDialog
 from digest.similarity_analysis import SimilarityWorker, post_process
-from digest.popup_window import PopupWindow
+from digest.popup_window import PopupDialog, PopupWindow
 from digest.huggingface_page import HuggingfacePage
+from digest.pytorch_ingest import PyTorchIngest
 from digest.multi_model_selection_page import MultiModelSelectionPage
 from digest.ui.mainwindow_ui import Ui_MainWindow
 from digest.modelsummary import modelSummary
@@ -60,7 +61,7 @@ from utils import onnx_utils
 
 class DigestConfig:
     GUI_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "gui_config.yaml")
-    SUPPORTED_EXTENSIONS = [".onnx", ".yaml"]
+    SUPPORTED_EXTENSIONS = [".onnx", ".yaml", ".pt", ".pth"]
 
 
 class SimilarityAnalysisReport(QMainWindow):
@@ -185,6 +186,8 @@ class DigestApp(QMainWindow):
         self.err_open_dialog: Optional[StatusDialog] = None
         self.temp_dir: tempfile.TemporaryDirectory = tempfile.TemporaryDirectory()
         self.digest_models: Dict[str, DigestModel] = {}
+        self.pytorch_ingest: Optional[PyTorchIngest] = None
+        self.pytorch_ingest_window: Optional[PopupDialog] = None
 
         self.model_similarity_report: Dict[str, SimilarityAnalysisReport] = {}
 
@@ -283,7 +286,10 @@ class DigestApp(QMainWindow):
 
     def openFile(self):
         file_name, _ = QFileDialog.getOpenFileName(
-            self, "Open File", "", "ONNX and Report Files (*.onnx  *.yaml)"
+            self,
+            "Open File",
+            "",
+            "ONNX, Report, and PyTorch Files (*.onnx *.yaml *.pt *.pth)",
         )
 
         if not file_name:
@@ -403,12 +409,14 @@ class DigestApp(QMainWindow):
                 raise ModelLoadError(f"Model file {file_path} does not exist.")
 
             basename, file_ext = os.path.splitext(os.path.basename(file_path))
-            supported_exts = [".onnx", ".yaml"]
-
-            if file_ext not in supported_exts:
+            if file_ext not in DigestConfig.SUPPORTED_EXTENSIONS:
                 raise ModelLoadError(
                     f"Digest does not support files with the extension {file_ext}"
                 )
+
+            if file_ext in (".pt", ".pth"):
+                self.load_pytorch(file_path)
+                return
 
             # Before opening the file, check to see if it is already opened.
             for index in range(self.ui.tabWidget.count()):
@@ -450,6 +458,19 @@ class DigestApp(QMainWindow):
                 f"Unexpected error loading model: {str(e)}", parent=self
             )
             self.status_dialog.show()
+
+    def load_pytorch(self, file_path: str) -> None:
+        """Collect export inputs for a PyTorch model, then load the exported ONNX."""
+        model_name = os.path.splitext(os.path.basename(file_path))[0]
+        self.pytorch_ingest = PyTorchIngest(file_path, model_name)
+        self.pytorch_ingest_window = PopupDialog(
+            self.pytorch_ingest, "PyTorch Ingest", self
+        )
+        self.pytorch_ingest_window.open()
+
+        onnx_file_path = self.pytorch_ingest.digest_pytorch_model.onnx_file_path
+        if onnx_file_path:
+            self.load_model(onnx_file_path)
 
     def post_load_model(self, digest_model: DigestModel):
         """This function is automatically run after the model load workers are finished"""

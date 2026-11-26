@@ -32,6 +32,8 @@ dependencies = [
     "platformdirs>=4.2.2",
     "pyyaml>=6.0.1",
     "psutil>=6.0.0",
+    "torch",
+    "transformers",
 ]
 
 [project.scripts]

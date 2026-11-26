@@ -15,6 +15,7 @@ from typing import List, Dict, Optional, Any, Union
 class SupportedModelTypes(Enum):
     ONNX = "onnx"
     REPORT = "report"
+    PYTORCH = "pytorch"
 
 
 class NodeParsingException(Exception):

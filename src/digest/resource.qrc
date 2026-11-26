@@ -1,21 +1,22 @@
 <RCC>
-    <qresource prefix="/">
-        <file>assets/icons/close-window-64.ico</file>
-        <file>assets/icons/info.png</file>
-        <file>assets/icons/open.png</file>
-        <file>assets/icons/digest_logo.ico</file>
-        <file>assets/images/digest_logo_500.jpg</file>
-        <file>assets/images/remove_background_500_zoom.png</file>
-        <file>assets/images/remove_background_200_zoom.png</file>
-        <file>assets/icons/huggingface.png</file>
-        <file>assets/icons/huggingface_64px.png</file>
-        <file>assets/gifs/load.gif</file>
-        <file>assets/icons/save.png</file>
-        <file>assets/icons/node_list.png</file>
-        <file>assets/icons/search.png</file>
-        <file>assets/icons/models.png</file>
-        <file>assets/icons/file.png</file>
-        <file>assets/icons/freeze.png</file>
-        <file>assets/icons/summary.png</file>
-    </qresource>
+  <qresource prefix="/">
+    <file>assets/icons/64px-PyTorch_logo_icon.svg.png</file>
+    <file>assets/icons/close-window-64.ico</file>
+    <file>assets/icons/info.png</file>
+    <file>assets/icons/open.png</file>
+    <file>assets/icons/digest_logo.ico</file>
+    <file>assets/images/digest_logo_500.jpg</file>
+    <file>assets/images/remove_background_500_zoom.png</file>
+    <file>assets/images/remove_background_200_zoom.png</file>
+    <file>assets/icons/huggingface.png</file>
+    <file>assets/icons/huggingface_64px.png</file>
+    <file>assets/gifs/load.gif</file>
+    <file>assets/icons/save.png</file>
+    <file>assets/icons/node_list.png</file>
+    <file>assets/icons/search.png</file>
+    <file>assets/icons/models.png</file>
+    <file>assets/icons/file.png</file>
+    <file>assets/icons/freeze.png</file>
+    <file>assets/icons/summary.png</file>
+  </qresource>
 </RCC>
