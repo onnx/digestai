@@ -63,8 +63,9 @@ class DigestReportModel(DigestModel):
         self.is_valid = validate_yaml(report_filepath)
 
         if not self.is_valid:
-            print(f"The yaml file {report_filepath} is not a valid digest report.")
-            return
+            raise ValueError(
+                f"The yaml file {report_filepath} is not a valid Digest report."
+            )
 
         self.model_data = OrderedDict()
         with open(report_filepath, "r", encoding="utf-8") as yaml_f:
@@ -160,6 +161,8 @@ class DigestReportModel(DigestModel):
 
 class WorkerSignals(QObject):
     completed = Signal(DigestReportModel)
+    failed = Signal(str)
+    finished = Signal()
 
 
 class LoadDigestReportModelWorker(QRunnable):
@@ -177,9 +180,13 @@ class LoadDigestReportModelWorker(QRunnable):
 
     @Slot()
     def run(self):
-
-        digest_model = DigestReportModel(self.model_file_path)
-        self.signals.completed.emit(digest_model)
+        try:
+            digest_model = DigestReportModel(self.model_file_path)
+            self.signals.completed.emit(digest_model)
+        except Exception as error:  # noqa: BLE001
+            self.signals.failed.emit(str(error))
+        finally:
+            self.signals.finished.emit()
 
 
 def validate_yaml(report_file_path: str) -> bool:

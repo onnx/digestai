@@ -369,7 +369,7 @@ class DigestGuiTest(unittest.TestCase):
                 QApplication.processEvents()
 
                 mock_download.assert_called_once_with(
-                    "test/model", filename="model.onnx", force_download=True
+                    "test/model", filename="model.onnx"
                 )
 
     def _save_nodes_list(self, expected_output):

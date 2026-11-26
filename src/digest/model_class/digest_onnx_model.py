@@ -661,6 +661,8 @@ class DigestOnnxModel(DigestModel):
 
 class WorkerSignals(QObject):
     completed = Signal(DigestOnnxModel)
+    failed = Signal(str)
+    finished = Signal()
 
 
 class LoadDigestOnnxModelWorker(QRunnable):
@@ -683,18 +685,20 @@ class LoadDigestOnnxModelWorker(QRunnable):
                 self.model_file_path, load_external_data=False
             )
             opt_model, _ = onnx_utils.optimize_onnx_model(model_proto)
-        except FileNotFoundError as e:
-            print(f"File not found: {e.filename}")
 
-        digest_model = DigestOnnxModel(
-            opt_model,
-            model_name=self.tab_name,
-            onnx_filepath=self.model_file_path,
-        )
+            digest_model = DigestOnnxModel(
+                opt_model,
+                model_name=self.tab_name,
+                onnx_filepath=self.model_file_path,
+            )
 
-        self.unique_id = digest_model.unique_id
+            self.unique_id = digest_model.unique_id
 
-        if not self.tab_name:
-            self.tab_name = digest_model.model_name
+            if not self.tab_name:
+                self.tab_name = digest_model.model_name
 
-        self.signals.completed.emit(digest_model)
+            self.signals.completed.emit(digest_model)
+        except Exception as error:  # noqa: BLE001
+            self.signals.failed.emit(str(error))
+        finally:
+            self.signals.finished.emit()
