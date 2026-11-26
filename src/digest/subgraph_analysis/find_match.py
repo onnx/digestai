@@ -2,59 +2,50 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import os
 import argparse
 import json
+import hashlib
 import zipfile
+from pathlib import Path
 import pandas as pd
+from platformdirs import user_cache_path
 
-import numpy as np
 from digest.subgraph_analysis.model_encode import (
     encode_model,
 )
 
 
-def find_match(model_path, dequantize=False, replace=False):
+def _target_cache_path(model_path, dequantize=False, cache_dir=None):
+    model_hash = hashlib.sha256()
+    model_hash.update(b"dequantize=true\0" if dequantize else b"dequantize=false\0")
+    with open(model_path, "rb") as model_file:
+        for chunk in iter(lambda: model_file.read(1024 * 1024), b""):
+            model_hash.update(chunk)
 
-    # Unzip database if needed
-    analyzer_path = os.path.dirname(os.path.abspath(__file__))
-    database_path = os.path.join(analyzer_path, "database")
-    if not os.path.exists(database_path):
-        database_zip_path = os.path.join(analyzer_path, "database.zip")
-        with zipfile.ZipFile(database_zip_path, "r") as zip_ref:
-            print("Unpacking model database")
-            zip_ref.extractall(analyzer_path)
+    cache_root = Path(cache_dir) if cache_dir else user_cache_path("digestai")
+    return cache_root / "similarity" / "targets" / f"{model_hash.hexdigest()}.json"
 
-    # Open feature of target model
-    model_name = os.path.splitext(os.path.basename(model_path))[0]
-    target_model_path = os.path.join(database_path, f"{model_name}.json")
-    if os.path.exists(target_model_path):
-        print(f"{target_model_path} found.")
-        if replace:
-            print("Replacing it!")
-            encode_model(model_path=model_path, dequantize=dequantize)
-        else:
-            print(
-                "Using encoded model found in the cache. Use `--replace` "
-                "if you want to overwrite it."
-            )
-    else:
-        print("Encoding model for the first time.")
-        encode_model(model_path=model_path, dequantize=dequantize)
+
+def find_match(
+    model_path,
+    dequantize=False,
+    replace=False,
+    cache_dir=None,
+    database_zip_path=None,
+):
+    target_model_path = _target_cache_path(model_path, dequantize, cache_dir)
+    if replace or not target_model_path.exists():
+        encode_model(
+            model_path=model_path,
+            dequantize=dequantize,
+            output_path=target_model_path,
+        )
 
     with open(target_model_path, "r", encoding="utf-8") as json_file:
         target_model = json.load(json_file)
 
-    # Get features of all models in the database
-    # Note that the target model is intentionally part of this list
-    models_json = []
-    for root, _, files in os.walk(database_path):
-        for file in files:
-            if file.endswith(".json"):
-                models_json.append(os.path.join(root, file))
-
     # Filter columns we will show
-    target_op_dict = target_model["op_list"]
+    target_op_dict = dict(target_model["op_list"])
     target_op_dict.pop("input", None)
     target_op_dict.pop("output", None)
 
@@ -64,50 +55,54 @@ def find_match(model_path, dequantize=False, replace=False):
     subgraphs = sorted(subgraphs, key=subgraphs.get, reverse=True)[:num_subgraphs]
     ops = list({k: v for k, v in target_op_dict.items() if len(k) != 32}.keys())
     target_op_dict = {k: v for k, v in target_op_dict.items() if k in subgraphs + ops}
+    if not target_op_dict:
+        raise ValueError("The target model does not contain comparable operations.")
 
-    df = pd.DataFrame(columns=["Name", "Score"] + list(target_op_dict))
+    database_zip_path = database_zip_path or Path(__file__).with_name("database.zip")
+    rows = []
+    with zipfile.ZipFile(database_zip_path, "r") as database_zip:
+        reference_files = sorted(
+            name for name in database_zip.namelist() if name.endswith(".json")
+        )
+        for reference_json in reference_files:
+            reference_name = Path(reference_json).stem
+            reference_model = json.loads(database_zip.read(reference_json))
 
-    scores = {}
-    for reference_json in models_json:
-        reference_basename = os.path.basename(reference_json)
-        reference_name = os.path.splitext(reference_basename)[0]
-        with open(reference_json, "r", encoding="utf-8") as ref_json_f:
-            reference_model = json.load(ref_json_f)
+            score = 0
+            row = {"Name": reference_name}
 
-        score = 0
-        row = {"Name": reference_name}
+            for subgraph in target_op_dict:
+                if subgraph in reference_model["op_list"]:
 
-        for subgraph in target_op_dict:
-            if subgraph in reference_model["op_list"]:
+                    ratio = (
+                        reference_model["op_list"][subgraph]
+                        / target_op_dict[subgraph]
+                    )
+                    if ratio > 1:
+                        ratio = 1 / ratio
+                    row[subgraph] = ratio
+                    score += row[subgraph]
+                else:
+                    row[subgraph] = 0.0
+            row["Score"] = score / len(target_op_dict)
+            rows.append(row)
 
-                ratio = reference_model["op_list"][subgraph] / target_op_dict[subgraph]
-                if ratio > 1:
-                    ratio = 1 / ratio
-                row[subgraph] = ratio
-                score += row[subgraph]
-            else:
-                row[subgraph] = 0.0
-        score = score / len(target_op_dict)
-        row["Score"] = score
-        df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
-        scores[reference_name] = score
+    if not rows:
+        raise ValueError("The similarity reference database is empty.")
+
+    df = pd.DataFrame(rows, columns=["Name", "Score"] + list(target_op_dict))
 
     # Convert to pandas and sort by score
     df_sorted = df.sort_values(by="Score", ascending=False)
 
     # Only keep top and bottom values
-    df_sorted = pd.concat([df_sorted.head(25), df_sorted.tail(5)])
+    if len(df_sorted) > 30:
+        df_sorted = pd.concat([df_sorted.head(25), df_sorted.tail(5)])
 
     name_list = df_sorted["Name"].tolist()
-    df_sorted.drop("Score", axis=1, inplace=True)
-    df_sorted.drop("Name", axis=1, inplace=True)
-    df_sorted = pd.DataFrame(
-        np.array(df_sorted.values),
-        index=range(len(name_list)),
-        columns=df_sorted.columns,
-    )
+    df_sorted = df_sorted.drop(columns=["Score", "Name"]).reset_index(drop=True)
 
-    return name_list, reference_model, df_sorted
+    return name_list, target_model, df_sorted
 
 
 def main():
