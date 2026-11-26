@@ -38,11 +38,12 @@ class SimilarityWorker(QRunnable):
         if not self.model_id:
             raise ValueError("You must set the model id")
 
+        df_sorted = pd.DataFrame()
         try:
             most_similar, _, df_sorted = find_match(
                 self.model_filepath,
                 dequantize=False,
-                replace=True,
+                replace=False,
             )
             most_similar = [os.path.basename(path) for path in most_similar]
             # We convert List[str] to str to send through the signal

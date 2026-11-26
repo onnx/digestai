@@ -5,6 +5,7 @@
 import os
 import json
 import hashlib
+import tempfile
 from collections import Counter
 from typing import Dict, Optional, List
 import argparse
@@ -364,7 +365,7 @@ def find_onnx_files(directory):
     return onnx_files
 
 
-def encode_model(model_path, model_name=None, dequantize=False):
+def encode_model(model_path, model_name=None, dequantize=False, output_path=None):
     onnx_model = onnx.load(model_path, load_external_data=False)
 
     # Set a default name
@@ -397,12 +398,21 @@ def encode_model(model_path, model_name=None, dequantize=False):
         "onnx_model_info": onnx_model_info,
         "op_list": subgraphs,
     }
-    analyzer_path = os.path.dirname(os.path.abspath(__file__))
-    database_path = os.path.join(analyzer_path, "database")
-    out_location = os.path.join(database_path, f"{model_name}.json")
-    with open(out_location, "w", encoding="utf-8") as json_file:
+    if output_path is None:
+        analyzer_path = os.path.dirname(os.path.abspath(__file__))
+        database_path = os.path.join(analyzer_path, "database")
+        output_path = os.path.join(database_path, f"{model_name}.json")
+
+    out_location = os.path.abspath(output_path)
+    os.makedirs(os.path.dirname(out_location), exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        "w", encoding="utf-8", dir=os.path.dirname(out_location), delete=False
+    ) as json_file:
         json.dump(model_description, json_file)
+        temporary_path = json_file.name
+    os.replace(temporary_path, out_location)
     print(f"Model encoded and saved to {out_location}")
+    return model_description
 
 
 def main():

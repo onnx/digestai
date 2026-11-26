@@ -349,7 +349,7 @@ class DigestApp(QMainWindow):
             widget.ui.similarityCorrelation.show()
             widget.ui.similarityCorrelationStatic.show()
 
-            most_similar_list = most_similar_list[1:4]
+            most_similar_list = (most_similar_list + ["", "", ""])[:3]
             if most_similar:
                 text = (
                     "\n<span style='color:red;text-align:center;'>"
