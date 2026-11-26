@@ -142,12 +142,11 @@ class DigestOnnxModel(DigestModel):
                     or self.output_tensors_.get(node_output)
                 )
                 if tensor:
-                    output_tensor_info[node_output].shape.extend(
-                        [
-                            int(dim.dim_value)
-                            for dim in tensor.type.tensor_type.shape.dim
-                        ]
-                    )
+                    for dim in tensor.type.tensor_type.shape.dim:
+                        if dim.HasField("dim_value"):
+                            output_tensor_info[node_output].shape.append(dim.dim_value)
+                        elif dim.HasField("dim_param"):
+                            output_tensor_info[node_output].shape.append(dim.dim_param)
                     dtype_str, dtype_bytes = onnx_utils.tensor_type_to_str_and_size(
                         tensor.type.tensor_type.elem_type
                     )
@@ -233,6 +232,10 @@ class DigestOnnxModel(DigestModel):
                 tensor.name: tensor for tensor in onnx_model.graph.initializer
             }
 
+        # Initializers are model-owned values. Count each initializer once even if
+        # multiple nodes share it.
+        self.parameters = onnx_utils.get_parameter_count(onnx_model)
+
         for node in onnx_model.graph.node:
 
             node_info = NodeInfo()
@@ -253,7 +256,6 @@ class DigestOnnxModel(DigestModel):
                     if all(isinstance(dim, int) for dim in input_tensor.shape):
                         input_parameters = int(np.prod(np.array(input_tensor.shape)))
                         node_info.parameters += input_parameters
-                        self.parameters += input_parameters
                         self.node_type_parameters[node.op_type] = (
                             self.node_type_parameters.get(node.op_type, 0)
                             + input_parameters
@@ -282,20 +284,20 @@ class DigestOnnxModel(DigestModel):
                 ):
 
                     input_a = node_info.get_input(0).shape
-                    if node.op_type == "QLinearMatMul":
-                        input_b = node_info.get_input(3).shape
-                    else:
-                        input_b = node_info.get_input(1).shape
-
-                    if not all(
-                        isinstance(dim, int) for dim in input_a
-                    ) or not isinstance(input_b[-1], int):
+                    output_shape = node_info.get_output(0).shape
+                    if (
+                        not all(isinstance(dim, int) for dim in output_shape)
+                        or not input_a
+                        or not isinstance(input_a[-1], int)
+                    ):
                         node_info.flops = None
                         self.flops = None
                         continue
 
                     node_info.flops = int(
-                        2 * np.prod(np.array(input_a), dtype=np.int64) * input_b[-1]
+                        2
+                        * np.prod(np.array(output_shape), dtype=np.int64)
+                        * input_a[-1]
                     )
 
                 elif (
@@ -303,19 +305,16 @@ class DigestOnnxModel(DigestModel):
                     or node.op_type == "Div"
                     or node.op_type == "Add"
                 ):
-                    input_a = node_info.get_input(0).shape
-                    input_b = node_info.get_input(1).shape
+                    output_shape = node_info.get_output(0).shape
 
-                    if not all(isinstance(dim, int) for dim in input_a) or not all(
-                        isinstance(dim, int) for dim in input_b
-                    ):
+                    if not all(isinstance(dim, int) for dim in output_shape):
                         node_info.flops = None
                         self.flops = None
                         continue
 
                     node_info.flops = int(
-                        np.prod(np.array(input_a), dtype=np.int64)
-                    ) + int(np.prod(np.array(input_b), dtype=np.int64))
+                        np.prod(np.array(output_shape), dtype=np.int64)
+                    )
 
                 elif node.op_type == "Gemm" or node.op_type == "QGemm":
                     x_shape = node_info.get_input(0).shape
@@ -353,9 +352,10 @@ class DigestOnnxModel(DigestModel):
                         2 * np.prod(np.array(mm_dims), dtype=np.int64)
                     )
 
-                    if len(mm_dims) == 3:  # if there is a bias input
-                        bias_shape = node_info.get_input(2).shape
-                        node_info.flops += int(np.prod(np.array(bias_shape)))
+                    bias_index = 2 if node.op_type == "Gemm" else 6
+                    if len(node.input) > bias_index and node.input[bias_index]:
+                        output_points = mm_dims[0] * mm_dims[2]
+                        node_info.flops += output_points
 
                 elif (
                     node.op_type == "Conv"
@@ -372,7 +372,9 @@ class DigestOnnxModel(DigestModel):
                     else:
                         w_shape = node_info.get_input(1).shape
 
-                    if not all(isinstance(dim, int) for dim in x_shape):
+                    if not all(isinstance(dim, int) for dim in x_shape) or not all(
+                        isinstance(dim, int) for dim in w_shape
+                    ):
                         node_info.flops = None
                         self.flops = None
                         continue
@@ -382,6 +384,8 @@ class DigestOnnxModel(DigestModel):
 
                     has_bias = False  # Note, ConvInteger has no bias
                     if node.op_type == "Conv" and len(node_info.inputs) == 3:
+                        has_bias = True
+                    elif node.op_type == "ConvTranspose" and len(node_info.inputs) == 3:
                         has_bias = True
                     elif node.op_type == "QLinearConv" and len(node_info.inputs) == 9:
                         has_bias = True
@@ -395,7 +399,12 @@ class DigestOnnxModel(DigestModel):
                     )  # type: List[int]
                     kernel_shape = w_shape_ints[2:]
                     batch_size = x_shape_ints[0]
-                    out_channels = w_shape_ints[0]
+                    group = node_info.attributes.get("group", 1)
+                    out_channels = (
+                        w_shape_ints[1] * group
+                        if node.op_type == "ConvTranspose"
+                        else w_shape_ints[0]
+                    )
                     out_dims = [batch_size, out_channels]
                     output_shape = node_info.attributes.get(
                         "output_shape", []
@@ -413,7 +422,10 @@ class DigestOnnxModel(DigestModel):
                         # SAME expects padding so that the output_shape = CEIL(input_shape / stride)
                         if auto_pad == "SAME_UPPER" or auto_pad == "SAME_LOWER":
                             out_dims.extend(
-                                [x * s for x, s in zip(x_shape_ints[2:], strides)]
+                                [
+                                    (x + stride - 1) // stride
+                                    for x, stride in zip(x_shape_ints[2:], strides)
+                                ]
                             )
                         else:
                             # NOTSET means just use pads attribute
@@ -429,11 +441,15 @@ class DigestOnnxModel(DigestModel):
                                 dim_in = x_shape_ints[i + 2]  # type: int
 
                                 if node.op_type == "ConvTranspose":
+                                    output_padding = node_info.attributes.get(
+                                        "output_padding", [0] * num_dims
+                                    )
                                     out_dim = (
                                         strides[i] * (dim_in - 1)
                                         + ((kernel_shape[i] - 1) * dilation[i] + 1)
                                         - pads[i]
                                         - pads[i + num_dims]
+                                        + output_padding[i]
                                     )
                                 else:
                                     out_dim = (
@@ -446,8 +462,13 @@ class DigestOnnxModel(DigestModel):
 
                                 out_dims.append(out_dim)
 
+                    channels_per_output = (
+                        w_shape_ints[0] // group
+                        if node.op_type == "ConvTranspose"
+                        else w_shape_ints[1]
+                    )
                     kernel_flops = int(
-                        np.prod(np.array(kernel_shape)) * w_shape_ints[1]
+                        np.prod(np.array(kernel_shape)) * channels_per_output
                     )
                     output_points = int(np.prod(np.array(out_dims)))
                     bias_ops = output_points if has_bias else int(0)
