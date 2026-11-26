@@ -19,6 +19,7 @@ from digest.model_class.digest_model import (
     TensorData,
     TensorInfo,
 )
+from digest.report_schema import validate_report_data
 
 
 def parse_tensor_info(
@@ -184,37 +185,13 @@ class LoadDigestReportModelWorker(QRunnable):
 
 def validate_yaml(report_file_path: str) -> bool:
     """Check that the provided yaml file is indeed a Digest Report file."""
-    expected_keys = [
-        "report_date",
-        "model_file",
-        "model_type",
-        "model_name",
-        "flops",
-        "node_type_flops",
-        "node_type_parameters",
-        "node_type_counts",
-        "input_tensors",
-        "output_tensors",
-    ]
     try:
         with open(report_file_path, "r", encoding="utf-8") as file:
             yaml_content = yaml.safe_load(file)
-
-        if not isinstance(yaml_content, dict):
-            print("Error: YAML content is not a dictionary")
-            return False
-
-        for key in expected_keys:
-            if key not in yaml_content:
-                # print(f"Error: Missing required key '{key}'")
-                return False
-
-        return True
+        return not validate_report_data(yaml_content)
     except yaml.YAMLError as _:
-        # print(f"Error parsing YAML file: {e}")
         return False
     except IOError as _:
-        # print(f"Error reading file: {e}")
         return False
 
 

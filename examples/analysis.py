@@ -15,7 +15,7 @@ from digest.model_class.digest_model import (
     save_node_type_counts_csv_report,
 )
 from digest.model_class.digest_onnx_model import DigestOnnxModel
-from utils.onnx_utils import (
+from digest.utils.onnx_utils import (
     get_dynamic_input_dims,
     load_onnx,
 )

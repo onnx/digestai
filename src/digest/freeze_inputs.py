@@ -24,7 +24,7 @@ import onnxruntime.tools.make_dynamic_shape_fixed as ort_fixed
 from digest.ui.freezeinputs_ui import Ui_freezeInputs
 from digest.dialog import ProgressDialog
 from digest.qt_utils import apply_dark_style_sheet
-from utils import onnx_utils
+from digest.utils import onnx_utils
 
 ROOT_FOLDER = os.path.dirname(os.path.abspath(__file__))
 LOGGER = logging.getLogger(__name__)

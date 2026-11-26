@@ -6,9 +6,11 @@ import os
 import unittest
 import tempfile
 import csv
-import utils.onnx_utils as onnx_utils
+import yaml
+from digest.utils import onnx_utils
 from digest.model_class.digest_onnx_model import DigestOnnxModel
 from digest.model_class.digest_report_model import compare_yaml_files
+from digest.model_class.digest_report_model import validate_yaml
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 TEST_ONNX = os.path.join(TEST_DIR, "resnet18.onnx")
@@ -22,6 +24,26 @@ TEST_NODES_CSV_REPORT = os.path.join(TEST_DIR, "resnet18_reports/resnet18_nodes.
 
 
 class TestDigestReports(unittest.TestCase):
+
+    def test_report_schema_rejects_wrong_field_types(self):
+        with open(TEST_SUMMARY_YAML_REPORT, "r", encoding="utf-8") as report_file:
+            report = yaml.safe_load(report_file)
+        report["flops"] = "many"
+
+        with tempfile.NamedTemporaryFile(suffix=".yaml", mode="w") as invalid_report:
+            yaml.safe_dump(report, invalid_report)
+            invalid_report.flush()
+            self.assertFalse(validate_yaml(invalid_report.name))
+
+    def test_report_schema_rejects_unknown_versions(self):
+        with open(TEST_SUMMARY_YAML_REPORT, "r", encoding="utf-8") as report_file:
+            report = yaml.safe_load(report_file)
+        report["report_schema_version"] = 999
+
+        with tempfile.NamedTemporaryFile(suffix=".yaml", mode="w") as invalid_report:
+            yaml.safe_dump(report, invalid_report)
+            invalid_report.flush()
+            self.assertFalse(validate_yaml(invalid_report.name))
 
     def compare_files_line_by_line(self, file1, file2, skip_lines=0):
         with open(file1, "r", encoding="utf-8") as f1, open(
