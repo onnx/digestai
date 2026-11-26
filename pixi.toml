@@ -23,7 +23,7 @@ compile-ui = { cmd = "python src/digest/compile_digest_gui.py", description = "R
 pytest = ">=8"
 
 [feature.test.tasks]
-test = { cmd = "pytest test/test_reports.py test/test_huggingface.py", description = "Run the tests that CI runs" }
+test = { cmd = "pytest test/test_reports.py test/test_huggingface.py test/test_multi_model_scan.py", description = "Run the tests that CI runs" }
 test-gui = { cmd = "pytest test/test_gui.py", description = "Run the GUI test (needs a display; not run in CI)" }
 
 [feature.lint.dependencies]

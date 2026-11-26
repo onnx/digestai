@@ -3,11 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-import glob
 from typing import List, Optional, Dict, Union
-from collections import defaultdict
-from google.protobuf.message import DecodeError
-import onnx
 
 from PySide6.QtWidgets import (
     QWidget,
@@ -22,10 +18,40 @@ from PySide6.QtCore import Qt, Signal, QThread
 from digest.dialog import WarnDialog, ProgressDialog
 from digest.ui.multimodelselection_page_ui import Ui_MultiModelSelection
 from digest.multi_model_analysis import MultiModelAnalysis
-from digest.qt_utils import apply_dark_style_sheet, prompt_user_ram_limit
+from digest.multi_model_scan import ScanResult, scan_directory
+from digest.qt_utils import apply_dark_style_sheet
 from digest.model_class.digest_onnx_model import DigestOnnxModel
-from digest.model_class.digest_report_model import DigestReportModel, compare_yaml_files
+from digest.model_class.digest_report_model import DigestReportModel
 from utils import onnx_utils
+
+
+class DirectoryScanThread(QThread):
+    started_scan = Signal(str, int)
+    step_progress = Signal()
+    completed = Signal(object)
+    failed = Signal(str)
+
+    def __init__(self, directory: str):
+        super().__init__()
+        self.directory = directory
+
+    def run(self):
+        try:
+            total_files = sum(
+                1
+                for _, _, filenames in os.walk(self.directory)
+                for filename in filenames
+                if filename.endswith((".onnx", ".yaml"))
+            )
+            self.started_scan.emit("Scanning models", total_files)
+            result = scan_directory(
+                self.directory,
+                canceled=self.isInterruptionRequested,
+                progress=self.step_progress.emit,
+            )
+            self.completed.emit(result)
+        except Exception as error:  # noqa: BLE001
+            self.failed.emit(str(error))
 
 
 class AnalysisThread(QThread):
@@ -33,6 +59,7 @@ class AnalysisThread(QThread):
     step_progress = Signal()  # Signal to send progress value
     close_progress = Signal()  # Signal to close dialog
     completed = Signal(list)  # Signal for thread completion
+    failed = Signal(str)
 
     def __init__(self):
         super().__init__()
@@ -46,31 +73,36 @@ class AnalysisThread(QThread):
         # the user closes the window and re-opens it.
         self.open_progress.emit("Performing model analysis", len(self.model_dict))
 
-        for file, model in self.model_dict.items():
-            if self.user_canceled:
-                self.close_progress.emit()
-                self.completed.emit([])
-                return
-            self.step_progress.emit()
-            if model:
-                continue
-            model_name, file_ext = os.path.splitext(os.path.basename(file))
-            if file_ext == ".onnx":
-                model_proto = onnx_utils.load_onnx(file, False)
-                self.model_dict[file] = DigestOnnxModel(
-                    model_proto,
-                    onnx_filepath=file,
-                    model_name=model_name,
-                    save_proto=False,
-                )
-            elif file_ext == ".yaml":
-                self.model_dict[file] = DigestReportModel(file)
+        errors = []
+        try:
+            for file, model in self.model_dict.items():
+                if self.user_canceled:
+                    self.completed.emit([])
+                    return
+                self.step_progress.emit()
+                if model:
+                    continue
+                model_name, file_ext = os.path.splitext(os.path.basename(file))
+                try:
+                    if file_ext == ".onnx":
+                        model_proto = onnx_utils.load_onnx(file, False)
+                        self.model_dict[file] = DigestOnnxModel(
+                            model_proto,
+                            onnx_filepath=file,
+                            model_name=model_name,
+                            save_proto=False,
+                        )
+                    elif file_ext == ".yaml":
+                        self.model_dict[file] = DigestReportModel(file)
+                except Exception as error:  # noqa: BLE001
+                    errors.append(f"{file}: {error}")
 
-        self.close_progress.emit()
-
-        model_list = list(self.model_dict.values())
-
-        self.completed.emit(model_list)
+            model_list = [model for model in self.model_dict.values() if model]
+            self.completed.emit(model_list)
+            if errors:
+                self.failed.emit("\n".join(errors))
+        finally:
+            self.close_progress.emit()
 
     def stop_processing(self) -> None:
         self.user_canceled = True
@@ -117,6 +149,7 @@ class MultiModelSelectionPage(QWidget):
         ] = {}
 
         self.analysis_thread: Optional[AnalysisThread] = None
+        self.scan_thread: Optional[DirectoryScanThread] = None
         self.progress: Optional[ProgressDialog] = None
         self.analysis_window = QMainWindow()
 
@@ -129,6 +162,10 @@ class MultiModelSelectionPage(QWidget):
     def cancel_analysis(self):
         if self.analysis_thread:
             self.analysis_thread.stop_processing()
+
+    def cancel_scan(self):
+        if self.scan_thread:
+            self.scan_thread.requestInterruption()
 
     def step_progress(self):
         if self.progress:
@@ -213,143 +250,66 @@ class MultiModelSelectionPage(QWidget):
         else:
             return
 
-        onnx_file_list = list(
-            glob.glob(os.path.join(directory, "**/*.onnx"), recursive=True)
-        )
-        onnx_file_list = [os.path.normpath(model_file) for model_file in onnx_file_list]
+        self.ui.openAnalysisBtn.setEnabled(False)
+        self.scan_thread = DirectoryScanThread(directory)
+        self.scan_thread.started_scan.connect(self.open_scan_progress)
+        self.scan_thread.step_progress.connect(self.step_progress)
+        self.scan_thread.completed.connect(self.on_directory_scan_completed)
+        self.scan_thread.failed.connect(self.on_directory_scan_failed)
+        self.scan_thread.finished.connect(self.close_progress)
+        self.scan_thread.start()
 
-        # TODO Move to another thread and see if we can capture tqdm
-        yaml_file_list = list(
-            glob.glob(os.path.join(directory, "**/*.yaml"), recursive=True)
-        )
-        yaml_file_list = [os.path.normpath(model_file) for model_file in yaml_file_list]
+    def open_scan_progress(self, message: str, num_steps: int) -> None:
+        self.progress = ProgressDialog(message, num_steps, self)
+        self.progress.canceled.connect(self.cancel_scan)
 
-        # Filter out YAML files that are not valid reports
-        report_file_list = []
-        for yaml_file in yaml_file_list:
-            digest_report = DigestReportModel(yaml_file)
-            if digest_report.is_valid:
-                report_file_list.append(yaml_file)
+    def on_directory_scan_failed(self, message: str) -> None:
+        self.update_warning_label(f"Unable to scan directory: {message}")
 
-        total_num_models = len(onnx_file_list) + len(report_file_list)
+    def on_directory_scan_completed(self, result: ScanResult) -> None:
+        if result.canceled:
+            self.update_message_label("Directory scan canceled.")
+            return
 
-        if total_num_models == 0:
+        groups = result.onnx_groups + result.report_groups
+        if not groups:
             self.update_message_label("No models found in the selected directory.")
             return
 
-        serialized_models_paths: defaultdict[bytes, List[str]] = defaultdict(list)
-
-        progress = ProgressDialog("Loading models", total_num_models, self)
-
-        memory_limit_percentage = 90
-        models_loaded = 0
-        for filepath in onnx_file_list + report_file_list:
-            progress.step()
-            if progress.wasCanceled():
-                break
-            try:
-                models_loaded += 1
-                extension = os.path.splitext(filepath)[-1]
-                if extension == ".onnx":
-                    model = onnx.load(filepath, load_external_data=False)
-                    serialized_models_paths[model.SerializeToString()].append(filepath)
-                elif extension == ".yaml":
-                    pass
-                dialog_msg = (
-                    "Warning: System RAM has exceeded the threshold of "
-                    f"{memory_limit_percentage}%. No further models will be loaded. "
-                )
-                if prompt_user_ram_limit(
-                    sys_ram_percent_limit=memory_limit_percentage,
-                    message=dialog_msg,
-                    parent=self,
-                ):
-                    self.update_warning_label(
-                        f"Loaded only {models_loaded - 1} out of {total_num_models} models "
-                        f"as memory consumption has reached {memory_limit_percentage}% of "
-                        "system memory. Preventing further loading of models."
-                    )
-                    print(
-                        "Preventing further model loads as mem consumption exceeded "
-                        f"{memory_limit_percentage}%"
-                    )
-                    break
-                else:
-                    self.ui.warningLabel.hide()
-
-            except DecodeError as error:
-                print(f"Error decoding model {filepath}: {error}")
-
-        progress = ProgressDialog(
-            "Processing Models",
-            len(serialized_models_paths) + len(report_file_list),
-            self,
-        )
-
-        num_duplicates = 0
         self.item_model.clear()
         self.ui.duplicateListWidget.clear()
-        for paths in serialized_models_paths.values():
-            if progress.wasCanceled():
-                break
-            progress.step()
+        num_duplicates = 0
+        for paths in groups:
             if len(paths) > 1:
-                num_duplicates += 1
+                num_duplicates += len(paths) - 1
                 self.ui.duplicateListWidget.addItem(paths[0])
-                for dupe in paths[1:]:
-                    self.ui.duplicateListWidget.addItem(f"- Duplicate: {dupe}")
+                for duplicate in paths[1:]:
+                    self.ui.duplicateListWidget.addItem(f"- Duplicate: {duplicate}")
+
             item = QStandardItem(paths[0])
             item.setCheckable(True)
             item.setCheckState(Qt.CheckState.Checked)
             self.item_model.appendRow(item)
 
-        # Use a standard nested loop to detect duplicate reports
-        duplicate_reports: Dict[str, List[str]] = {}
-        processed_files = set()
-        for i in range(len(report_file_list)):
-            if progress.wasCanceled():
-                break
-            progress.step()
-            path1 = report_file_list[i]
-            if path1 in processed_files:
-                continue  # Skip already processed files
-
-            # We will use path1 as the unique model and save a list of duplicates
-            duplicate_reports[path1] = []
-            for j in range(i + 1, len(report_file_list)):
-                path2 = report_file_list[j]
-                if compare_yaml_files(
-                    path1, path2, ["report_date", "model_files", "digest_version"]
-                ):
-                    num_duplicates += 1
-                    duplicate_reports[path1].append(path2)
-                    processed_files.add(path2)
-
-        progress.close()
-
-        for path, dupes in duplicate_reports.items():
-            if dupes:
-                self.ui.duplicateListWidget.addItem(path)
-                for dupe in dupes:
-                    self.ui.duplicateListWidget.addItem(f"- Duplicate: {dupe}")
-            item = QStandardItem(path)
-            item.setCheckable(True)
-            item.setCheckState(Qt.CheckState.Checked)
-            self.item_model.appendRow(item)
-
         if num_duplicates:
-            label_text = f"Ignoring {num_duplicates} duplicate model(s)."
-            self.ui.duplicateLabel.setText(label_text)
+            self.ui.duplicateLabel.setText(
+                f"Ignoring {num_duplicates} duplicate model(s)."
+            )
             self.ui.duplicateLabel.show()
         else:
             self.ui.duplicateLabel.hide()
 
-        self.update_num_selected_label()
+        if result.errors:
+            self.update_warning_label(
+                f"Skipped {len(result.errors)} unreadable or invalid file(s)."
+            )
+        else:
+            self.ui.warningLabel.hide()
 
+        self.update_num_selected_label()
         self.update_message_label(
-            f"Found a total of {total_num_models} model files. "
-            "Right click a model below "
-            "to open it up in the model summary view."
+            f"Found {result.total_files} candidate files and "
+            f"{len(groups)} unique models. Right click a model below to open it."
         )
 
     def start_analysis(self):
@@ -360,6 +320,7 @@ class MultiModelSelectionPage(QWidget):
 
         self.analysis_thread = AnalysisThread()
         self.analysis_thread.completed.connect(self.open_analysis)
+        self.analysis_thread.failed.connect(self.update_warning_label)
         self.analysis_thread.close_progress.connect(self.close_progress)
         self.analysis_thread.step_progress.connect(self.step_progress)
         self.analysis_thread.open_progress.connect(self.open_progress)
