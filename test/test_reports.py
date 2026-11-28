@@ -53,12 +53,14 @@ class TestDigestReports(unittest.TestCase):
                 next(f1)
                 next(f2)
 
-            for line1, line2 in zip(f1, f2):
-                line1 = line1.rstrip("\n")
-                line2 = line2.rstrip("\n")
-                self.assertEqual(
-                    line1, line2, msg=f"Difference in line: {line1} vs {line2}"
-                )
+            lines1 = [line.rstrip("\n") for line in f1]
+            lines2 = [line.rstrip("\n") for line in f2]
+            self.assertEqual(
+                len(lines1),
+                len(lines2),
+                msg=f"Different line counts: {len(lines1)} vs {len(lines2)}",
+            )
+            self.assertEqual(lines1, lines2)
 
     def compare_csv_files(self, file1, file2, skip_lines=0):
         with open(file1, "r", encoding="utf-8") as f1, open(
@@ -71,8 +73,14 @@ class TestDigestReports(unittest.TestCase):
                 next(reader1)
                 next(reader2)
 
-            for row1, row2 in zip(reader1, reader2):
-                self.assertEqual(row1, row2, msg=f"Difference in row: {row1} vs {row2}")
+            rows1 = list(reader1)
+            rows2 = list(reader2)
+            self.assertEqual(
+                len(rows1),
+                len(rows2),
+                msg=f"Different row counts: {len(rows1)} vs {len(rows2)}",
+            )
+            self.assertEqual(rows1, rows2)
 
     def test_against_example_reports(self):
         model_proto = onnx_utils.load_onnx(TEST_ONNX, load_external_data=False)
