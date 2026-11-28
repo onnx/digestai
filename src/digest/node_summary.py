@@ -11,7 +11,7 @@ from digest.model_class.digest_model import (
     save_node_shape_counts_csv_report,
     save_nodes_csv_report,
 )
-from utils import onnx_utils
+from digest.utils import onnx_utils
 
 ROOT_FOLDER = os.path.dirname(__file__)
 

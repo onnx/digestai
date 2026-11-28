@@ -22,7 +22,7 @@ from digest.qt_utils import apply_dark_style_sheet
 from digest.folder_scan import FolderScanThread
 from digest.model_class.digest_onnx_model import DigestOnnxModel
 from digest.model_class.digest_report_model import DigestReportModel
-from utils import onnx_utils
+from digest.utils import onnx_utils
 
 
 class AnalysisThread(QThread):

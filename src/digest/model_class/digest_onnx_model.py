@@ -19,7 +19,8 @@ from digest.model_class.digest_model import (
     TensorData,
     TensorInfo,
 )
-import utils.onnx_utils as onnx_utils
+from digest.report_schema import REPORT_SCHEMA_VERSION
+from digest.utils import onnx_utils
 
 
 class DigestOnnxModel(DigestModel):
@@ -526,6 +527,7 @@ class DigestOnnxModel(DigestModel):
         digest_version = importlib.metadata.version("digestai")
 
         yaml_data = {
+            "report_schema_version": REPORT_SCHEMA_VERSION,
             "report_date": report_date,
             "digest_version": digest_version,
             "model_type": self.model_type.value,

@@ -55,7 +55,7 @@ from digest.model_class.digest_report_model import (
     DigestReportModel,
     LoadDigestReportModelWorker,
 )
-from utils import onnx_utils
+from digest.utils import onnx_utils
 
 
 class DigestConfig:
