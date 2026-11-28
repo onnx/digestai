@@ -441,21 +441,33 @@ class DigestApp(QMainWindow):
 
             if digest_model_worker is not None:
                 digest_model_worker.signals.completed.connect(self.post_load_model)
+                digest_model_worker.signals.failed.connect(self.on_model_load_failed)
+                digest_model_worker.signals.finished.connect(self.finish_model_load)
                 self.thread_pool.start(digest_model_worker)
         except ModelLoadError as e:
+            self.finish_model_load()
             self.status_dialog = StatusDialog(str(e), parent=self)
             self.status_dialog.show()
         except Exception as e:  # noqa: BLE001
+            self.finish_model_load()
             self.status_dialog = StatusDialog(
                 f"Unexpected error loading model: {str(e)}", parent=self
             )
             self.status_dialog.show()
 
-    def post_load_model(self, digest_model: DigestModel):
-        """This function is automatically run after the model load workers are finished"""
-
+    def finish_model_load(self) -> None:
         if self.load_progress:
             self.load_progress.close()
+            self.load_progress = None
+
+    def on_model_load_failed(self, message: str) -> None:
+        self.status_dialog = StatusDialog(
+            f"Unable to load model: {message}", parent=self
+        )
+        self.status_dialog.show()
+
+    def post_load_model(self, digest_model: DigestModel):
+        """This function is automatically run after the model load workers are finished"""
 
         if digest_model.unique_id:
             model_id = digest_model.unique_id

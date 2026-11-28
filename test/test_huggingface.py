@@ -39,6 +39,23 @@ class TestHFSearchThread(unittest.TestCase):
             search="onnx", filter="library:onnx"
         )
 
+    def test_search_reports_top_level_hub_errors(self):
+        thread = HFSearchThread("onnx")
+        errors = []
+        thread.signals.failed.connect(errors.append)
+
+        with patch(
+            "digest.huggingface_page.hf_api.list_models",
+            side_effect=HfHubHTTPError(
+                "Search failed",
+                response=SimpleNamespace(headers={}, request=None),
+            ),
+        ):
+            thread.run()
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("Search failed", errors[0])
+
 
 if __name__ == "__main__":
     unittest.main()

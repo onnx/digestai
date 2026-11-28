@@ -7,8 +7,15 @@ import unittest
 import tempfile
 import csv
 import utils.onnx_utils as onnx_utils
-from digest.model_class.digest_onnx_model import DigestOnnxModel
-from digest.model_class.digest_report_model import compare_yaml_files
+from digest.model_class.digest_onnx_model import (
+    DigestOnnxModel,
+    LoadDigestOnnxModelWorker,
+)
+from digest.model_class.digest_report_model import (
+    DigestReportModel,
+    LoadDigestReportModelWorker,
+    compare_yaml_files,
+)
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 TEST_ONNX = os.path.join(TEST_DIR, "resnet18.onnx")
@@ -22,6 +29,41 @@ TEST_NODES_CSV_REPORT = os.path.join(TEST_DIR, "resnet18_reports/resnet18_nodes.
 
 
 class TestDigestReports(unittest.TestCase):
+
+    def test_onnx_worker_reports_load_errors_and_finishes(self):
+        worker = LoadDigestOnnxModelWorker("missing.onnx", "missing")
+        errors = []
+        finished = []
+        worker.signals.failed.connect(errors.append)
+        worker.signals.finished.connect(lambda: finished.append(True))
+
+        worker.run()
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("does not exist", errors[0])
+        self.assertEqual(finished, [True])
+
+    def test_invalid_report_is_never_emitted_as_a_model(self):
+        with tempfile.NamedTemporaryFile(suffix=".yaml", mode="w") as invalid_report:
+            invalid_report.write("not: a digest report")
+            invalid_report.flush()
+
+            with self.assertRaises(ValueError):
+                DigestReportModel(invalid_report.name)
+
+            worker = LoadDigestReportModelWorker(invalid_report.name, "invalid")
+            completed = []
+            errors = []
+            finished = []
+            worker.signals.completed.connect(completed.append)
+            worker.signals.failed.connect(errors.append)
+            worker.signals.finished.connect(lambda: finished.append(True))
+
+            worker.run()
+
+        self.assertEqual(completed, [])
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(finished, [True])
 
     def compare_files_line_by_line(self, file1, file2, skip_lines=0):
         with open(file1, "r", encoding="utf-8") as f1, open(

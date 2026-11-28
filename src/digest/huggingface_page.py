@@ -28,6 +28,7 @@ logger.setLevel(logging.INFO)
 
 class SearchSignals(QObject):
     completed = Signal(dict, str)  # Changed to emit processed data directly
+    failed = Signal(str)
     started = Signal(str)  # Signal to indicate search has started
 
 
@@ -41,47 +42,50 @@ class HFSearchThread(QThread):
         self.search_text = search_text
 
     def run(self):
-        if not self.search_text:
-            raise ValueError("Search text is not set.")
+        try:
+            if not self.search_text:
+                raise ValueError("Search text is not set.")
 
-        # Signal that search has started
-        self.signals.started.emit(self.search_text)
+            self.signals.started.emit(self.search_text)
 
-        # First, search for models
-        if "huggingface.co/" in self.search_text:
-            search_text = self.search_text.split("huggingface.co/")[-1]
-            hf_models = [hf_api.model_info(repo_id=search_text)]
-        else:
-            hf_models = list(
-                hf_api.list_models(
-                    search=self.search_text, filter="library:onnx"
+            if "huggingface.co/" in self.search_text:
+                search_text = self.search_text.split("huggingface.co/")[-1]
+                hf_models = [hf_api.model_info(repo_id=search_text)]
+            else:
+                hf_models = list(
+                    hf_api.list_models(
+                        search=self.search_text, filter="library:onnx"
+                    )
                 )
-            )
 
-        # Then, process the models to get their files
-        column_data = {}
-        for hf_model in hf_models:
-            column_data[hf_model.id] = {
-                "onnx": [],
-                "url": hf_model.id,
-            }
-            try:
-                all_repo_files = hf_api.list_repo_files(hf_model.id)
-                all_onnx_files = [f for f in all_repo_files if f.endswith(".onnx")]
-                for onnx_file in all_onnx_files:
-                    column_data[hf_model.id]["onnx"].append(onnx_file)
-            except HfHubHTTPError as err:
-                column_data[hf_model.id]["onnx"].append("Error accessing repo")
-                print(f"Error accessing model {hf_model}: {err}")
-                continue
+            column_data = {}
+            for hf_model in hf_models:
+                if self.isInterruptionRequested():
+                    return
+                column_data[hf_model.id] = {
+                    "onnx": [],
+                    "url": hf_model.id,
+                }
+                try:
+                    all_repo_files = hf_api.list_repo_files(hf_model.id)
+                    all_onnx_files = [
+                        file for file in all_repo_files if file.endswith(".onnx")
+                    ]
+                    column_data[hf_model.id]["onnx"].extend(all_onnx_files)
+                except HfHubHTTPError:
+                    column_data[hf_model.id]["onnx"].append("Error accessing repo")
 
-        # Emit the processed data directly
-        self.signals.completed.emit(column_data, self.search_text)
+            if not self.isInterruptionRequested():
+                self.signals.completed.emit(column_data, self.search_text)
+        except Exception as error:  # noqa: BLE001
+            if not self.isInterruptionRequested():
+                self.signals.failed.emit(str(error))
 
 
 class DownloadSignal(QObject):
     progress = Signal(int)  # Signal to emit the download progress (0-100)
     finished = Signal(str)
+    failed = Signal(str)
     started = Signal(str)  # Signal to indicate download has started
 
 
@@ -96,16 +100,13 @@ class HFDownloadThread(QThread):
         self.signals.started.emit(self.filename)
 
         try:
-            # Download the file
-            path = hf_hub_download(
-                self.repo_id, filename=self.filename, force_download=True
-            )
+            path = hf_hub_download(self.repo_id, filename=self.filename)
 
-            # Signal completion
-            self.signals.finished.emit(path)
+            if not self.isInterruptionRequested():
+                self.signals.finished.emit(path)
         except Exception as e:  # noqa: BLE001
-            print(f"Error downloading file: {e}")
-            self.signals.finished.emit("")  # Empty string indicates error
+            if not self.isInterruptionRequested():
+                self.signals.failed.emit(str(e))
 
 
 class HuggingfacePage(QWidget):
@@ -152,7 +153,11 @@ class HuggingfacePage(QWidget):
         )
 
     def on_column_view_selection_change(self, selected):
-        index = selected.indexes()[0]
+        indexes = selected.indexes()
+        if not indexes:
+            self.ui.open_onnx_btn.setEnabled(False)
+            return
+        index = indexes[0]
         onnx_file = index.model().data(index, Qt.ItemDataRole.DisplayRole)
         if onnx_file.endswith(".onnx"):
             self.ui.open_onnx_btn.setEnabled(True)  # Enable the button
@@ -187,6 +192,7 @@ class HuggingfacePage(QWidget):
         self.search_thread = HFSearchThread(search_text)
         self.search_thread.signals.started.connect(self.on_search_started)
         self.search_thread.signals.completed.connect(self.on_search_completed)
+        self.search_thread.signals.failed.connect(self.on_search_failed)
 
         # Start the search thread
         self.search_thread.start()
@@ -220,11 +226,15 @@ class HuggingfacePage(QWidget):
         # Update the UI with the processed data
         self.update_model_list_view(column_data, search_text)
 
+    def on_search_failed(self, message: str) -> None:
+        if self.search_progress_dialog:
+            self.search_progress_dialog.close()
+            self.search_progress_dialog = None
+        self.update_message_label(warn_message=f"Hugging Face search failed: {message}")
+
     def cancel_search(self):
         if self.search_thread and self.search_thread.isRunning():
-            # Terminate the search thread
-            self.search_thread.terminate()
-            self.search_thread.wait()
+            self.search_thread.requestInterruption()
             self.update_message_label(info_message="Search canceled")
 
         # Close the progress dialog if it's open
@@ -282,6 +292,7 @@ class HuggingfacePage(QWidget):
         # Connect signals
         self.download_thread.signals.started.connect(self.on_download_started)
         self.download_thread.signals.finished.connect(self.on_download_finished)
+        self.download_thread.signals.failed.connect(self.on_download_failed)
 
         # Handle cancel button in progress dialog
         self.download_progress_dialog.canceled.connect(self.cancel_download)
@@ -290,24 +301,31 @@ class HuggingfacePage(QWidget):
 
     @Slot(str)
     def on_download_started(self, _filename):
-        self.download_progress_dialog.show()
+        if self.download_progress_dialog:
+            self.download_progress_dialog.show()
 
     @Slot(str)
-    def on_download_finished(self, path):
+    def on_download_finished(self, path: str) -> None:
         # Bound QObject slots route worker signals to the GUI thread. Lambdas
         # without a receiver context can otherwise manipulate widgets on a worker.
-        if path:
-            self.currently_selected_hf_onnx["cache"] = path
-        self.download_progress_dialog.close()
-        self.update_message_label(
-            info_message=f"Downloaded model to {path}" if path else "Download failed"
-        )
-        if path:
-            self.model_signal.emit(path)
+        self.currently_selected_hf_onnx["cache"] = path
+        if self.download_progress_dialog:
+            self.download_progress_dialog.close()
+            self.download_progress_dialog = None
+        self.model_signal.emit(path)
+        self.update_message_label(info_message=f"Downloaded model to {path}")
+
+    @Slot(str)
+    def on_download_failed(self, message: str) -> None:
+        if self.download_progress_dialog:
+            self.download_progress_dialog.close()
+            self.download_progress_dialog = None
+        self.update_message_label(warn_message=f"Download failed: {message}")
 
     def cancel_download(self):
         if self.download_thread and self.download_thread.isRunning():
-            # Terminate the download thread
-            self.download_thread.terminate()
-            self.download_thread.wait()
+            self.download_thread.requestInterruption()
             self.update_message_label(info_message="Download canceled")
+        if self.download_progress_dialog:
+            self.download_progress_dialog.close()
+            self.download_progress_dialog = None
