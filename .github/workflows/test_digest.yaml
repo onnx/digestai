@@ -28,11 +28,26 @@ jobs:
 
   test:
     runs-on: ${{ matrix.os }}
+    env:
+      QT_QPA_PLATFORM: offscreen
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
-        environment: [py311, py312, py313]
+        include:
+          - os: ubuntu-latest
+            environment: py311
+          - os: ubuntu-latest
+            environment: py312
+          - os: ubuntu-latest
+            environment: py313
+          - os: windows-latest
+            environment: py311
+          - os: windows-latest
+            environment: py312
+          - os: windows-latest
+            environment: py313
+          - os: macos-15
+            environment: py312
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -45,12 +60,8 @@ jobs:
         with:
           pixi-version: v0.81.0
           environments: ${{ matrix.environment }}
-      - name: Test summary reports
+      - name: Run test suite with coverage
         run: pixi run -e ${{ matrix.environment }} test
-      - name: Test GUI
-        env:
-          QT_QPA_PLATFORM: offscreen
-        run: pixi run -e ${{ matrix.environment }} test-gui
 
   wheel:
     runs-on: ${{ matrix.os }}
