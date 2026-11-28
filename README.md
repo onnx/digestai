@@ -13,9 +13,9 @@ DigestAI
 
 [![python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](https://github.com/onnx/digestai)
 ![version](https://img.shields.io/badge/release-1.2-green)
-[![license](https://img.shields.io/badge/license-Apache2.0-blue)](https://github.com/onnx/digestai/blob/master/LICENSE)
+[![license](https://img.shields.io/badge/license-Apache2.0-blue)](https://github.com/onnx/digestai/blob/main/LICENSE.txt)
 
-![logo](src/digest/assets/images/banner.png)
+![DigestAI logo](src/digest/assets/images/digest_logo_500.jpg)
 ---
 
 <div align="left">
@@ -86,6 +86,16 @@ Alternatively, install Digest AI with pip into any Python 3.11–3.13 environmen
 
 PyPI publishing access is being established in [issue #30](https://github.com/onnx/digestai/issues/30).
 Use the source installation above until a PyPI release is announced.
+
+### Supported Platforms
+
+The locked Pixi environments support Windows x86-64, Linux x86-64, and Apple silicon Macs running macOS 14 or newer. DigestAI supports Python 3.11, 3.12, and 3.13.
+
+### Analysis Limitations
+
+- FLOP totals require static input shapes. Models with dynamic dimensions must be frozen before a complete total can be calculated.
+- Operators without a known FLOP formula are reported without a FLOP count. Models containing unsupported recurrent or custom operators may not have a model-level total.
+- ONNX models that use external tensor data must keep those data files beside the model. Some metadata-only operations intentionally avoid loading external data to reduce memory use.
 
 # Digest AI User Guide
 
@@ -166,7 +176,7 @@ python analysis.py /path/to/model.onnx /path/to/output/directory
 python analysis.py /path/to/model/directory /path/to/output/directory
 ```
 
-For more information on Digest API, see the [Digest API Guide](examples\README.md).
+For more information on Digest API, see the [Digest API Guide](examples/README.md).
 
 # Digest AI Developer Guide
 
